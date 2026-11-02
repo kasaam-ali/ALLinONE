@@ -1,7 +1,9 @@
-"""STUB inbound webhook: validates + records payloads in memory. No external fan-out."""
+"""Job: GODMODE Integrations. Purpose: STUB inbound webhook + integrations list router. No external fan-out."""
 import re
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from ..models import User
+from ..security import require
 from .base import stub_result
 
 INBOX: list[dict] = []  # in-memory only, resets on restart
@@ -20,6 +22,11 @@ class WebhookInboundStub:
         return stub_result(self.name, {"recorded": rec["id"], "source": source, "fanout": False})
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
+
+@router.get("")
+def list_integrations(_u: User = Depends(require("read"))):
+    """Authenticated stub list. No third-party integrations configured; returns empty JSON array."""
+    return []
 
 @router.post("/webhooks/{source}")
 async def inbound(source: str, request: Request):

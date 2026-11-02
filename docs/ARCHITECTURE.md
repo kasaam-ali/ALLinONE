@@ -120,7 +120,7 @@ Synced 2026-11-03 to live `apps/api` serializers. Frontend already adapted. **Do
 - `actor_user_id`, `after_json` (plus `id`, `action`, `entity_type`, `entity_id`, `created_at`; store also has `before_json`)
 
 ### Stubs
-- `/integrations` (and `/api/v1/integrations`): **404 expected** (stub / not shipped)
+- `GET /api/v1/integrations` (auth read): returns `[]` (stub; no third-party integrations yet)
 
 ## 3. Approval-gate state machine
 

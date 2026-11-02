@@ -28,3 +28,13 @@ def test_webhook_endpoint_and_tools_list(no_network, c):
     assert c.post("/api/v1/integrations/webhooks/Bad!Src", json={}).status_code in (404, 422)
     t = c.get("/api/v1/integrations/tools").json()
     assert t["stub"] is True and {x["name"] for x in t["tools"]} == set(KNOWN_STUB_TOOLS)
+
+def test_list_integrations_auth_and_empty(c):
+    assert c.get("/api/v1/integrations").status_code == 401
+    r = c.post("/api/v1/auth/login", json={"email": "admin@godmode.local", "password": "godmode123"})
+    assert r.status_code == 200
+    h = {"Authorization": f"Bearer {r.json()['access_token']}"}
+    g = c.get("/api/v1/integrations", headers=h)
+    assert g.status_code == 200
+    assert g.json() == []
+

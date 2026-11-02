@@ -15,12 +15,12 @@ Remaining caveat: **stock bridge compose unverified** (iptables missing on box).
 - Architect recheck endpoints: `:8010` health/ready 200; `:3010` web 200.
 
 ### API / Frontend / closed gaps
-- pytest: **21 passed** (17 suite + 4 seed-env alias tests). Architect re-ran 21/21 ~00:53 PKT after `af7b7fc`.
+- pytest: **22 passed** (Integrations added GET /integrations stub test; prior 21 + 1).
 - vitest: **12/12**
 - create-task form + Live chip: **CLOSED**
 - BUG-QA-002: **CLOSED**
 - SoT live DTOs synced
-- `/integrations`: 404 expected (stub)
+- `/integrations`: GET returns `[]` (auth; stub)
 - **SEED_ADMIN_* alias: CLOSED** (`af7b7fc`). Prefer `GODMODE_ADMIN_*`; `SEED_*` fallback. Docs/compose examples updated.
 
 ## Truth
@@ -29,11 +29,11 @@ Remaining caveat: **stock bridge compose unverified** (iptables missing on box).
 | Overall | GREEN (caveats) | box compose path green; stock bridge unverified |
 | Compose E2E (box override) | GREEN | `affe49b` + compose-e2e refs |
 | Stock bridge compose | unverified | iptables missing on box |
-| pytest | **21 passed** | Architect run after `af7b7fc` |
+| pytest | **22 passed** | Integrations run after GET /integrations stub |
 | vitest | 12/12 | CTO |
 | create-task | CLOSED | CTO |
 | SEED_ADMIN_* alias | **CLOSED** | Backend `af7b7fc`; prefer GODMODE_ADMIN_* |
-| /integrations | 404 expected | stub |
+| /integrations | GET `[]` | stub auth |
 
 ## Gaps
 | ID | Status |
