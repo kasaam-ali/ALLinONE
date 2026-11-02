@@ -1,0 +1,13 @@
+# Python dependencies for the GODMODE API.
+fastapi==0.115.*
+uvicorn[standard]
+sqlalchemy>=2.0
+psycopg[binary]
+redis>=5
+pyjwt>=2.8
+bcrypt==4.0.1
+langgraph>=0.2
+pydantic>=2
+email-validator
+pytest
+httpx

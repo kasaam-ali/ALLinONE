@@ -1,0 +1,41 @@
+# Local stack: Postgres, Redis, FastAPI API, and Next.js web. Run: docker compose up --build
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-godmode}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-godmode}
+      POSTGRES_DB: ${POSTGRES_DB:-godmode}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-godmode}"]
+      interval: 3s
+      retries: 20
+    ports: ["5432:5432"]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  api:
+    build: ./apps/api
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-godmode}:${POSTGRES_PASSWORD:-godmode}@postgres:5432/${POSTGRES_DB:-godmode}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-please-32-bytes-min}
+      GODMODE_MOCK_LLM: ${GODMODE_MOCK_LLM:-1}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@godmode.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-godmode123}
+      CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+    ports: ["8000:8000"]
+  web:
+    build:
+      context: ./apps/web
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on: [api]
+    ports: ["3000:3000"]
+volumes:
+  pgdata:
