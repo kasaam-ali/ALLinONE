@@ -1,308 +1,125 @@
-"""Job: GODMODE Agentic AI.
-Purpose: LangGraph multi-agent graph plan -> research -> execute -> verify -> report
-with human approval gates after_plan and before_publish. GODMODE_MOCK_LLM=1 default.
+"""Job: GODMODE Agentic AI. Purpose: LangGraph run orchestration with two human gates.
+
+Flow: plan -> after_plan gate -> research -> execute -> verify -> before_publish gate -> report.
+Each invocation runs from run.current_stage until it hits a pending gate or finishes.
+Approval decisions resume the run via resume_after_gate. Mock LLM by default.
 """
-from __future__ import annotations
-
-import json
 import os
-from typing import Any, Literal, TypedDict
-
-from langgraph.graph import END, StateGraph
-
-from .tools import run_phase_tools
+from datetime import datetime, timezone
+from typing import TypedDict
+from langgraph.graph import StateGraph, END
+from sqlalchemy.orm import Session
+from .models import Run, StageEvent, Artifact, Approval, AgentDefinition, Report
+from .tools import run_phase_tools, agents_from_definitions
 
 MOCK = os.getenv("GODMODE_MOCK_LLM", "1") == "1"
 GATES = ("after_plan", "before_publish")
+STAGES = ("plan", "research", "execute", "verify", "report")
+# Gate that must be approved after a stage completes.
+GATE_AFTER = {"plan": "after_plan", "verify": "before_publish"}
+SLUG_FOR = {"plan": "planner", "research": "researcher", "execute": "executor", "verify": "verifier", "report": "reporter"}
 
 
-class S(TypedDict, total=False):
-    prompt: str
-    agents: list
-    requires_approval: bool
-    after_plan_approved: bool
-    before_publish_approved: bool
-    plan: list
-    outputs: dict
-    paused: bool
-    pause_gate: str
-    report: str
-    verification: dict
-    memory_refs: list
-    audit: list
-    tool_calls: list
+def _now():
+    return datetime.now(timezone.utc)
 
 
-def llm(role: str, prompt: str) -> str:
-    if MOCK:
-        return f"[mock-{role}] {prompt[:240]}"
-    raise RuntimeError("Real LLM not wired in MVP; set GODMODE_MOCK_LLM=1")
+class RunState(TypedDict, total=False):
+    run_id: int
+    stage: str
+    halted: bool
 
 
-def _agent(state: S, phase: str) -> str:
-    agents = state.get("agents") or []
-    for a in agents:
-        if phase in (a.get("role") or "").lower():
-            return a["name"]
-    return agents[0]["name"] if agents else f"{phase.title()} Agent"
+def _mock_output(stage: str, title: str, tool_calls: list) -> str:
+    base = {
+        "plan": f"Plan for '{title}': 1) research 2) execute 3) verify 4) report",
+        "research": f"Research notes for '{title}' (mock)",
+        "execute": f"Execution output for '{title}' (mock)",
+        "verify": f"Verification passed for '{title}' (mock)",
+        "report": f"# Report: {title}\n\nAll stages completed (mock LLM).",
+    }[stage]
+    if tool_calls:
+        base += f"\nTool calls: {[c['tool'] for c in tool_calls]}"
+    return base
 
 
-def _audit(state: S, node: str, detail: str) -> list:
-    events = list(state.get("audit") or [])
-    events.append({"node": node, "detail": detail})
-    return events
+def _agent_id(db: Session, stage: str):
+    a = db.query(AgentDefinition).filter(AgentDefinition.slug.like(f"{SLUG_FOR[stage]}%"),
+                                         AgentDefinition.status == "active").first()
+    return a.id if a else None
 
 
-def plan_node(state: S) -> dict:
-    p = state["prompt"]
-    steps = [
-        {"phase": "plan", "description": f"Decompose objective: {p[:80]}"},
-        {"phase": "research", "description": "Gather context and constraints"},
-        {"phase": "execute", "description": "Carry out the work (sandboxed / mock tools)"},
-        {"phase": "verify", "description": "Check results against objective"},
-        {"phase": "report", "description": "Summarize outcome for humans"},
-    ]
-    for s in steps:
-        s["agent"] = _agent(state, s["phase"])
-    out = dict(state.get("outputs") or {})
-    out["plan"] = llm("planner", "Plan for: " + p)
-    return {
-        "plan": steps,
-        "outputs": out,
-        "paused": False,
-        "pause_gate": "",
-        "audit": _audit(state, "plan", f"steps={len(steps)}"),
-    }
+def build_graph(db: Session):
+    def run_stage(state: RunState) -> RunState:
+        run = db.get(Run, state["run_id"])
+        stage = state["stage"]
+        run.current_stage = stage
+        run.status = "running"
+        run.task.status = "running"
+        ev = StageEvent(run_id=run.id, stage=stage, status="started", agent_definition_id=_agent_id(db, stage))
+        db.add(ev)
+        db.flush()
+        calls = []
+        if stage in ("research", "execute"):
+            defs = db.query(AgentDefinition).filter_by(status="active").all()
+            calls = run_phase_tools(stage, run.task.title, agents_from_definitions(defs))
+        body = _mock_output(stage, run.task.title, calls)
+        art = Artifact(run_id=run.id, stage=stage, kind="report" if stage == "report" else "text",
+                       body_text=body, mime="text/markdown")
+        db.add(art)
+        db.flush()
+        ev.status = "succeeded"
+        ev.output_ref = f"artifact:{art.id}"
+        if stage == "report":
+            db.add(Report(run_id=run.id, task_id=run.task_id, title=f"Report: {run.task.title}", body_md=body))
+            run.status = "succeeded"
+            run.task.status = "succeeded"
+            run.finished_at = _now()
+            db.commit()
+            return {"halted": True}
+        gate = GATE_AFTER.get(stage)
+        nxt = STAGES[STAGES.index(stage) + 1]
+        if gate:
+            db.add(Approval(run_id=run.id, gate=gate, status="pending"))
+            run.status = "awaiting_approval"
+            run.task.status = "awaiting_approval"
+            run.current_stage = nxt
+            db.commit()
+            return {"halted": True}
+        db.commit()
+        return {"stage": nxt, "halted": False}
 
-
-def after_plan_gate(state: S) -> dict:
-    if state.get("requires_approval") and not state.get("after_plan_approved"):
-        return {
-            "paused": True,
-            "pause_gate": "after_plan",
-            "audit": _audit(state, "after_plan_gate", "awaiting_approval"),
-        }
-    return {
-        "paused": False,
-        "pause_gate": "",
-        "after_plan_approved": True,
-        "audit": _audit(state, "after_plan_gate", "cleared"),
-    }
-
-
-def research_node(state: S) -> dict:
-    out = dict(state.get("outputs") or {})
-    out["research"] = llm("research", f"research for: {state['prompt']}")
-    if MOCK:
-        out["research"] += "\n[evidence:mock] stub sources only - no external fetch"
-    calls = list(state.get("tool_calls") or [])
-    calls.extend(run_phase_tools("research", state["prompt"], state.get("agents") or []))
-    out["tool_calls"] = calls
-    return {
-        "outputs": out,
-        "tool_calls": calls,
-        "audit": _audit(state, "research", f"tools={len(calls)}"),
-    }
-
-
-def execute_node(state: S) -> dict:
-    out = dict(state.get("outputs") or {})
-    evidence = {"mock": MOCK, "note": "stub only - no external side effect"}
-    out["execute"] = llm("execute", f"execute for: {state['prompt']}") + f"\nevidence={evidence}"
-    calls = list(state.get("tool_calls") or [])
-    new_calls = run_phase_tools("execute", state["prompt"], state.get("agents") or [])
-    calls.extend(new_calls)
-    out["tool_calls"] = calls
-    return {
-        "outputs": out,
-        "tool_calls": calls,
-        "audit": _audit(state, "execute", f"tools={len(new_calls)}"),
-    }
-
-
-def verify_node(state: S) -> dict:
-    out = dict(state.get("outputs") or {})
-    checks = [
-        {"name": "has_plan", "ok": bool(state.get("plan")), "detail": "plan present"},
-        {"name": "has_research", "ok": "research" in out, "detail": "research output"},
-        {"name": "has_execute", "ok": "execute" in out, "detail": "execute output"},
-        {
-            "name": "after_plan_cleared",
-            "ok": (not state.get("requires_approval")) or bool(state.get("after_plan_approved")),
-            "detail": "after_plan gate",
-        },
-    ]
-    passed = all(c["ok"] for c in checks) if checks else False
-    verification = {"passed": passed, "checks": checks}
-    out["verify"] = llm("verify", f"verify for: {state['prompt']} passed={passed}")
-    return {
-        "outputs": out,
-        "verification": verification,
-        "audit": _audit(state, "verify", f"passed={passed}"),
-    }
-
-
-def before_publish_gate(state: S) -> dict:
-    if state.get("requires_approval") and not state.get("before_publish_approved"):
-        return {
-            "paused": True,
-            "pause_gate": "before_publish",
-            "audit": _audit(state, "before_publish_gate", "awaiting_approval"),
-        }
-    return {
-        "paused": False,
-        "pause_gate": "",
-        "before_publish_approved": True,
-        "audit": _audit(state, "before_publish_gate", "cleared"),
-    }
-
-
-def report_node(state: S) -> dict:
-    out = dict(state.get("outputs") or {})
-    body = "\n".join(f"## {k}\n{v}" for k, v in out.items() if k != "tool_calls")
-    ver = state.get("verification") or {}
-    headline = "Task completed" if ver.get("passed", True) else "Task finished with issues"
-    report = f"# {headline}\nObjective: {state['prompt']}\n\n{body}\n"
-    out["report"] = headline
-    mem = list(state.get("memory_refs") or [])
-    mem.append("task:last_report")
-    return {
-        "outputs": out,
-        "report": report,
-        "paused": False,
-        "pause_gate": "",
-        "memory_refs": mem,
-        "audit": _audit(state, "report", headline),
-    }
-
-
-def _route_after_plan_gate(state: S) -> Literal["pause_sink", "research"]:
-    return "pause_sink" if state.get("paused") else "research"
-
-
-def _route_after_publish_gate(state: S) -> Literal["pause_sink", "report"]:
-    return "pause_sink" if state.get("paused") else "report"
-
-
-def pause_sink(state: S) -> dict:
-    return {"paused": True}
-
-
-def build():
-    g = StateGraph(S)
-    g.add_node("plan", plan_node)
-    g.add_node("after_plan_gate", after_plan_gate)
-    g.add_node("research", research_node)
-    g.add_node("execute", execute_node)
-    g.add_node("verify", verify_node)
-    g.add_node("before_publish_gate", before_publish_gate)
-    g.add_node("report", report_node)
-    g.add_node("pause_sink", pause_sink)
-
-    g.set_entry_point("plan")
-    g.add_edge("plan", "after_plan_gate")
-    g.add_conditional_edges(
-        "after_plan_gate",
-        _route_after_plan_gate,
-        {"pause_sink": "pause_sink", "research": "research"},
-    )
-    g.add_edge("research", "execute")
-    g.add_edge("execute", "verify")
-    g.add_edge("verify", "before_publish_gate")
-    g.add_conditional_edges(
-        "before_publish_gate",
-        _route_after_publish_gate,
-        {"pause_sink": "pause_sink", "report": "report"},
-    )
-    g.add_edge("report", END)
-    g.add_edge("pause_sink", END)
+    g = StateGraph(RunState)
+    g.add_node("stage", run_stage)
+    g.set_entry_point("stage")
+    g.add_conditional_edges("stage", lambda s: END if s.get("halted") else "stage")
     return g.compile()
 
 
-GRAPH = build()
+def advance(db: Session, run: Run) -> Run:
+    """Run the graph from the run's current stage until a gate or completion."""
+    build_graph(db).invoke({"run_id": run.id, "stage": run.current_stage, "halted": False},
+                           {"recursion_limit": 20})
+    db.refresh(run)
+    return run
 
 
-def enqueue_run(run_id: int) -> dict:
-    """Compatibility hook for Backend. Real execution goes through run_planning/run_full."""
-    return {
-        "enqueued": True,
-        "run_id": run_id,
-        "mock_llm": MOCK,
-        "gates": list(GATES),
-        "note": "Use run_planning / continue_after_* / run_full for graph execution",
-    }
+def start_run(db: Session, run: Run) -> Run:
+    run.started_at = _now()
+    run.current_stage = "plan"
+    run.mock_llm = MOCK
+    db.commit()
+    return advance(db, run)
 
 
-def _base(prompt: str, agents: list, requires_approval: bool) -> S:
-    return {
-        "prompt": prompt,
-        "agents": agents,
-        "requires_approval": requires_approval,
-        "after_plan_approved": False,
-        "before_publish_approved": False,
-        "outputs": {},
-        "plan": [],
-        "paused": False,
-        "pause_gate": "",
-        "audit": [],
-        "memory_refs": [],
-        "tool_calls": [],
-    }
-
-
-def run_planning(prompt: str, agents: list, requires_approval: bool) -> dict[str, Any]:
-    """Run through plan and after_plan gate. May pause awaiting approval."""
-    return GRAPH.invoke(_base(prompt, agents, requires_approval))
-
-
-def continue_after_plan(prompt: str, agents: list, prior: dict | None = None) -> dict[str, Any]:
-    """Resume after after_plan approval through verify / before_publish gate."""
-    state: S = _base(prompt, agents, True)
-    if prior:
-        state["plan"] = prior.get("plan") or state["plan"]
-        state["outputs"] = dict(prior.get("outputs") or {})
-        state["tool_calls"] = list(prior.get("tool_calls") or [])
-    state["after_plan_approved"] = True
-    state["requires_approval"] = True
-    return GRAPH.invoke(state)
-
-
-def continue_after_publish(prompt: str, agents: list, prior: dict | None = None) -> dict[str, Any]:
-    """Resume after before_publish approval into report."""
-    state: S = _base(prompt, agents, True)
-    if prior:
-        state["plan"] = prior.get("plan") or []
-        state["outputs"] = dict(prior.get("outputs") or {})
-        state["verification"] = prior.get("verification") or {"passed": True, "checks": []}
-        state["tool_calls"] = list(prior.get("tool_calls") or [])
-    state["after_plan_approved"] = True
-    state["before_publish_approved"] = True
-    state["requires_approval"] = True
-    return GRAPH.invoke(state)
-
-
-def run_full(prompt: str, agents: list) -> dict[str, Any]:
-    """No human gates. Both approvals pre-cleared."""
-    state = _base(prompt, agents, False)
-    state["after_plan_approved"] = True
-    state["before_publish_approved"] = True
-    return GRAPH.invoke(state)
-
-
-if __name__ == "__main__":
-    os.environ.setdefault("GODMODE_MOCK_LLM", "1")
-    out = run_full("Solo graph smoke: draft a one-page ops brief", [])
-    print(
-        json.dumps(
-            {
-                "paused": out.get("paused"),
-                "pause_gate": out.get("pause_gate"),
-                "phases": list((out.get("outputs") or {}).keys()),
-                "report_head": (out.get("report") or "")[:180],
-                "audit_len": len(out.get("audit") or []),
-                "mock": MOCK,
-                "gates": list(GATES),
-            },
-            indent=2,
-        )
-    )
+def resume_after_gate(db: Session, approval: Approval) -> Run:
+    """Approve resumes the graph; reject fails the run."""
+    run = approval.run
+    if approval.status == "approved":
+        return advance(db, run)
+    run.status = "failed"
+    run.task.status = "failed"
+    run.error_summary = f"Rejected at gate {approval.gate}"
+    run.finished_at = _now()
+    db.commit()
+    return run

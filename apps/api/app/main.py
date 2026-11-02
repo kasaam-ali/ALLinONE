@@ -1,58 +1,58 @@
-"""Job: GODMODE Backend. Purpose: FastAPI /api/v1 surface per Architect canonical contract."""
+"""Job: GODMODE Backend. Purpose: FastAPI entrypoint exposing the canonical /api/v1 contract."""
 import os
-from datetime import datetime, timezone
 from contextlib import asynccontextmanager
-
+from datetime import datetime, timezone
+from typing import Literal
 from fastapi import FastAPI, Depends, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, field_validator
 from sqlalchemy import func, text
-
+from sqlalchemy.orm import Session
 from .db import Base, engine, get_db, SessionLocal
-from .models import (
-    User, AgentDefinition, Task, Run, StageEvent, Artifact, Approval,
-    AuditLog, MemoryItem, Report,
-)
-from .security import (
-    hash_pw, check_pw, make_token, make_refresh_token, decode_token,
-    current_user, require,
-)
+from .models import (User, AgentDefinition, Task, Run, StageEvent, Artifact, Approval,
+                     AuditLog, MemoryItem, Report)
+from .security import check_pw, make_token, make_refresh_token, decode_token, current_user, require
 from .seed import seed
-from . import orchestrator, queue
+from . import orchestrator
+from .tools import validate_allowlist
 from .tools.webhook_inbound import router as integrations_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    Base.metadata.create_all(engine)
+async def lifespan(_app):
+    Base.metadata.create_all(engine)  # infra/migrations/001_init.sql is canonical for Postgres
     with SessionLocal() as db:
         seed(db)
     yield
 
 
-app = FastAPI(title="GODMODE API", version="0.1.0", lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-app.include_router(integrations_router)
-
+app = FastAPI(title="GODMODE API", version="0.2.0", lifespan=lifespan)
+_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3010").split(",")
+            if o.strip() and o.strip() != "*"]
+app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_credentials=True,
+                   allow_methods=["*"], allow_headers=["*"])
 api = APIRouter(prefix="/api/v1")
+api.include_router(integrations_router)
 
 
-def audit(db: Session, user_id, action: str, entity_type: str = "", entity_id=None, before=None, after=None):
-    db.add(AuditLog(
-        actor_user_id=user_id,
-        action=action,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        before_json=before,
-        after_json=after,
-    ))
+def now():
+    return datetime.now(timezone.utc)
+
+
+def iso(d):
+    return d.isoformat() if d else None
+
+
+def audit(db, actor, action, entity_type="", entity_id=None, before=None, after=None):
+    db.add(AuditLog(actor_user_id=actor.id if actor else None, action=action, entity_type=entity_type,
+                    entity_id=entity_id, before_json=before, after_json=after))
+
+
+def get_or_404(db, model, oid):
+    obj = db.get(model, oid)
+    if not obj:
+        raise HTTPException(404, f"{model.__name__} not found")
+    return obj
 
 
 # ---------- schemas ----------
@@ -65,125 +65,131 @@ class RefreshIn(BaseModel):
     refresh_token: str
 
 
-class TaskCreateIn(BaseModel):
+class AgentIn(BaseModel):
+    slug: str
+    name: str
+    role_prompt: str = ""
+    tools_allowlist: list[str] = []
+    model_config_json: dict = {}
+
+    @field_validator("tools_allowlist")
+    @classmethod
+    def _v(cls, v):
+        return validate_allowlist(v)
+
+
+class AgentPatch(BaseModel):
+    name: str | None = None
+    role_prompt: str | None = None
+    tools_allowlist: list[str] | None = None
+    status: Literal["active", "disabled"] | None = None
+
+    @field_validator("tools_allowlist")
+    @classmethod
+    def _v(cls, v):
+        return validate_allowlist(v) if v is not None else v
+
+
+class TaskIn(BaseModel):
     title: str
     description: str = ""
     priority: int = 0
 
 
 class DecideIn(BaseModel):
-    decision: str  # approve|reject
+    decision: Literal["approve", "reject"]
     note: str | None = None
 
 
-class AgentIn(BaseModel):
-    slug: str
-    name: str
-    role_prompt: str = ""
-    tools_allowlist: list[str] = Field(default_factory=list)
-    status: str = "active"
-
-
 class MemoryIn(BaseModel):
+    key: str
+    content: str = ""
     scope: str = "global"
     scope_id: str | None = None
-    key: str
-    content: str
     importance: int = 0
 
 
-def user_out(u: User):
-    return {
-        "id": u.id,
-        "email": u.email,
-        "display_name": u.display_name,
-        "role": u.role,
-        "is_active": u.is_active,
-    }
+class MemoryPatch(BaseModel):
+    content: str | None = None
+    importance: int | None = None
 
 
-def task_out(t: Task):
-    return {
-        "id": t.id,
-        "title": t.title,
-        "description": t.description,
-        "priority": t.priority,
-        "status": t.status,
-        "created_by": t.created_by,
-        "parent_task_id": t.parent_task_id,
-        "created_at": t.created_at.isoformat() if t.created_at else None,
-        "updated_at": t.updated_at.isoformat() if t.updated_at else None,
-    }
+# ---------- serializers ----------
+def user_out(u):
+    return {"id": u.id, "email": u.email, "display_name": u.display_name, "role": u.role}
 
 
-def run_out(r: Run):
-    return {
-        "id": r.id,
-        "task_id": r.task_id,
-        "status": r.status,
-        "current_stage": r.current_stage,
-        "mock_llm": r.mock_llm,
-        "started_at": r.started_at.isoformat() if r.started_at else None,
-        "finished_at": r.finished_at.isoformat() if r.finished_at else None,
-        "error_summary": r.error_summary,
-    }
+def agent_out(a):
+    return {"id": a.id, "slug": a.slug, "name": a.name, "role_prompt": a.role_prompt,
+            "tools_allowlist": a.tools_allowlist, "status": a.status, "version": a.version}
 
 
-def agent_out(a: AgentDefinition):
-    return {
-        "id": a.id,
-        "slug": a.slug,
-        "name": a.name,
-        "role_prompt": a.role_prompt,
-        "tools_allowlist": a.tools_allowlist or [],
-        "status": a.status,
-        "version": a.version,
-    }
+def task_out(t):
+    latest = max(t.runs, key=lambda r: r.id) if t.runs else None
+    return {"id": t.id, "title": t.title, "description": t.description, "priority": t.priority,
+            "status": t.status, "latest_run_id": latest.id if latest else None,
+            "created_at": iso(t.created_at), "updated_at": iso(t.updated_at)}
+
+
+def run_out(r):
+    return {"id": r.id, "task_id": r.task_id, "status": r.status, "current_stage": r.current_stage,
+            "mock_llm": r.mock_llm, "started_at": iso(r.started_at), "finished_at": iso(r.finished_at),
+            "error_summary": r.error_summary,
+            "pending_approvals": [approval_out(a) for a in r.approvals if a.status == "pending"]}
+
+
+def event_out(e):
+    return {"id": e.id, "run_id": e.run_id, "stage": e.stage, "status": e.status,
+            "agent_definition_id": e.agent_definition_id, "output_ref": e.output_ref,
+            "created_at": iso(e.created_at)}
+
+
+def artifact_out(a):
+    return {"id": a.id, "run_id": a.run_id, "stage": a.stage, "kind": a.kind, "body_text": a.body_text,
+            "mime": a.mime, "created_at": iso(a.created_at)}
+
+
+def approval_out(a):
+    return {"id": a.id, "run_id": a.run_id, "gate": a.gate, "status": a.status,
+            "decision_note": a.decision_note, "decided_by": a.decided_by,
+            "decided_at": iso(a.decided_at), "created_at": iso(a.created_at)}
+
+
+def memory_out(m):
+    return {"id": m.id, "scope": m.scope, "scope_id": m.scope_id, "key": m.key, "content": m.content,
+            "importance": m.importance, "created_at": iso(m.created_at)}
+
+
+def report_out(r):
+    return {"id": r.id, "run_id": r.run_id, "task_id": r.task_id, "title": r.title, "body_md": r.body_md,
+            "status": r.status, "published_at": iso(r.published_at)}
 
 
 # ---------- health ----------
-def _health():
+@api.get("/health")
+def health():
     return {"status": "ok", "mock_llm": orchestrator.MOCK}
 
 
-def _ready(db: Session):
-    db.execute(text("SELECT 1"))
-    redis_ok = queue.ping_redis()
-    require_redis = os.getenv("GODMODE_REQUIRE_REDIS", "0") == "1"
-    body = {"status": "ready" if (redis_ok or not require_redis) else "not_ready", "db": True, "redis": redis_ok}
-    if require_redis and not redis_ok:
-        raise HTTPException(503, body)
-    return body
-
-
-@app.get("/health")
-@api.get("/health")
-def health():
-    return _health()
-
-
-@app.get("/ready")
 @api.get("/ready")
 def ready(db: Session = Depends(get_db)):
-    return _ready(db)
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(503, f"db not ready: {exc}") from exc
+    return {"status": "ready", "db": "ok"}
 
 
 # ---------- auth ----------
 @api.post("/auth/login")
 def login(body: LoginIn, db: Session = Depends(get_db)):
-    user = db.query(User).filter_by(email=body.email.lower().strip()).first()
-    if not user or not check_pw(body.password, user.password_hash):
+    u = db.query(User).filter_by(email=body.email.lower().strip()).first()
+    if not u or not u.is_active or not check_pw(body.password, u.password_hash):
         raise HTTPException(401, "Invalid credentials")
-    if not user.is_active:
-        raise HTTPException(403, "User inactive")
-    audit(db, user.id, "auth.login", "user", user.id)
+    audit(db, u, "auth.login", "user", u.id)
     db.commit()
-    return {
-        "access_token": make_token(user),
-        "refresh_token": make_refresh_token(user),
-        "token_type": "bearer",
-        "user": user_out(user),
-    }
+    return {"access_token": make_token(u), "refresh_token": make_refresh_token(u),
+            "token_type": "bearer", "user": user_out(u)}
 
 
 @api.post("/auth/refresh")
@@ -191,386 +197,255 @@ def refresh(body: RefreshIn, db: Session = Depends(get_db)):
     data = decode_token(body.refresh_token)
     if data.get("type") != "refresh":
         raise HTTPException(401, "Refresh token required")
-    user = db.get(User, int(data["sub"]))
-    if not user or not user.is_active:
+    u = db.get(User, int(data["sub"]))
+    if not u or not u.is_active:
         raise HTTPException(401, "User not found")
-    # DB role is source of truth on refresh (ADR-004)
-    return {
-        "access_token": make_token(user),
-        "refresh_token": make_refresh_token(user),
-        "token_type": "bearer",
-        "user": user_out(user),
-    }
+    return {"access_token": make_token(u), "token_type": "bearer"}
 
 
 @api.get("/auth/me")
-def me(user: User = Depends(current_user)):
-    return user_out(user)
-
-
-# ---------- users (admin) ----------
-@api.get("/users")
-def list_users(db: Session = Depends(get_db), user=Depends(require("admin"))):
-    return [user_out(u) for u in db.query(User).order_by(User.id)]
+def me(u: User = Depends(current_user)):
+    return user_out(u)
 
 
 # ---------- agents ----------
 @api.get("/agents")
-def list_agents(db: Session = Depends(get_db), user=Depends(require("read"))):
+def list_agents(db: Session = Depends(get_db), _=Depends(require("read"))):
     return [agent_out(a) for a in db.query(AgentDefinition).order_by(AgentDefinition.id)]
 
 
 @api.post("/agents", status_code=201)
-def create_agent(body: AgentIn, db: Session = Depends(get_db), user=Depends(require("admin"))):
+def create_agent(body: AgentIn, db: Session = Depends(get_db), u=Depends(require("write"))):
     if db.query(AgentDefinition).filter_by(slug=body.slug).first():
         raise HTTPException(409, "slug exists")
-    agent = AgentDefinition(
-        slug=body.slug,
-        name=body.name,
-        role_prompt=body.role_prompt,
-        tools_allowlist=body.tools_allowlist,
-        status=body.status,
-        created_by=user.id,
-    )
-    db.add(agent)
+    a = AgentDefinition(**body.model_dump(), created_by=u.id)
+    db.add(a)
     db.flush()
-    audit(db, user.id, "agent.create", "agent", agent.id, after=agent_out(agent))
+    audit(db, u, "agent.create", "agent_definition", a.id, after=agent_out(a))
     db.commit()
-    db.refresh(agent)
-    return agent_out(agent)
+    return agent_out(a)
 
 
-@api.get("/agents/{agent_id}")
-def get_agent(agent_id: int, db: Session = Depends(get_db), user=Depends(require("read"))):
-    agent = db.get(AgentDefinition, agent_id)
-    if not agent:
-        raise HTTPException(404, "Agent not found")
-    return agent_out(agent)
+@api.get("/agents/{aid}")
+def get_agent(aid: int, db: Session = Depends(get_db), _=Depends(require("read"))):
+    return agent_out(get_or_404(db, AgentDefinition, aid))
 
 
-@api.post("/agents/{agent_id}/disable")
-def disable_agent(agent_id: int, db: Session = Depends(get_db), user=Depends(require("admin"))):
-    agent = db.get(AgentDefinition, agent_id)
-    if not agent:
-        raise HTTPException(404, "Agent not found")
-    agent.status = "disabled"
-    audit(db, user.id, "agent.disable", "agent", agent.id)
+@api.patch("/agents/{aid}")
+def patch_agent(aid: int, body: AgentPatch, db: Session = Depends(get_db), u=Depends(require("write"))):
+    a = get_or_404(db, AgentDefinition, aid)
+    before = agent_out(a)
+    for k, v in body.model_dump(exclude_none=True).items():
+        setattr(a, k, v)
+    a.version += 1
+    audit(db, u, "agent.update", "agent_definition", a.id, before=before, after=agent_out(a))
     db.commit()
-    return agent_out(agent)
+    return agent_out(a)
 
 
-# ---------- tasks + runs ----------
-@api.post("/tasks", status_code=201)
-def create_task(body: TaskCreateIn, db: Session = Depends(get_db), user=Depends(require("write"))):
-    if not body.title.strip():
-        raise HTTPException(422, "title required")
-    task = Task(
-        title=body.title.strip(),
-        description=body.description,
-        priority=body.priority,
-        status="draft",
-        created_by=user.id,
-    )
-    db.add(task)
-    db.flush()
-    audit(db, user.id, "task.create", "task", task.id, after=task_out(task))
+@api.post("/agents/{aid}/disable")
+def disable_agent(aid: int, db: Session = Depends(get_db), u=Depends(require("admin"))):
+    a = get_or_404(db, AgentDefinition, aid)
+    a.status = "disabled"
+    audit(db, u, "agent.disable", "agent_definition", a.id)
     db.commit()
-    db.refresh(task)
-    return task_out(task)
+    return agent_out(a)
 
 
+# ---------- tasks ----------
 @api.get("/tasks")
-def list_tasks(db: Session = Depends(get_db), user=Depends(require("read"))):
-    return [task_out(t) for t in db.query(Task).order_by(Task.id.desc())]
+def list_tasks(status: str | None = None, db: Session = Depends(get_db), _=Depends(require("read"))):
+    q = db.query(Task)
+    if status:
+        q = q.filter_by(status=status)
+    return [task_out(t) for t in q.order_by(Task.created_at.desc(), Task.id.desc())]
 
 
-@api.get("/tasks/{task_id}")
-def get_task(task_id: int, db: Session = Depends(get_db), user=Depends(require("read"))):
-    task = db.get(Task, task_id)
-    if not task:
-        raise HTTPException(404, "Task not found")
-    return {**task_out(task), "runs": [run_out(r) for r in task.runs]}
-
-
-@api.post("/tasks/{task_id}/start")
-def start_task(task_id: int, db: Session = Depends(get_db), user=Depends(require("write"))):
-    task = db.get(Task, task_id)
-    if not task:
-        raise HTTPException(404, "Task not found")
-    if task.status in ("succeeded", "cancelled"):
-        raise HTTPException(409, f"cannot start task in status {task.status}")
-    mock = os.getenv("GODMODE_MOCK_LLM", "1") == "1"
-    now = datetime.now(timezone.utc)
-    run = Run(
-        task_id=task.id,
-        status="queued",
-        current_stage="plan",
-        mock_llm=mock,
-        started_at=now,
-    )
-    db.add(run)
+@api.post("/tasks", status_code=201)
+def create_task(body: TaskIn, db: Session = Depends(get_db), u=Depends(require("write"))):
+    t = Task(**body.model_dump(), created_by=u.id, status="draft", assigned_orchestrator="langgraph")
+    db.add(t)
     db.flush()
-    db.add(StageEvent(run_id=run.id, stage="plan", status="started"))
-    task.status = "queued"
-    audit(db, user.id, "task.start", "run", run.id, after=run_out(run))
-    orchestrator.enqueue_run(run.id)
-    queue.enqueue("task.start", {"task_id": task.id, "run_id": run.id})
+    audit(db, u, "task.create", "task", t.id)
     db.commit()
-    db.refresh(run)
-    return run_out(run)
+    return task_out(t)
 
 
-@api.get("/runs/{run_id}")
-def get_run(run_id: int, db: Session = Depends(get_db), user=Depends(require("read"))):
-    run = db.get(Run, run_id)
-    if not run:
-        raise HTTPException(404, "Run not found")
-    return {
-        **run_out(run),
-        "stage_events": [
-            {
-                "id": e.id,
-                "stage": e.stage,
-                "status": e.status,
-                "created_at": e.created_at.isoformat() if e.created_at else None,
-            }
-            for e in run.stage_events
-        ],
-        "artifacts": [
-            {"id": a.id, "stage": a.stage, "kind": a.kind, "mime": a.mime}
-            for a in run.artifacts
-        ],
-    }
+@api.get("/tasks/{tid}")
+def get_task(tid: int, db: Session = Depends(get_db), _=Depends(require("read"))):
+    t = get_or_404(db, Task, tid)
+    return {**task_out(t), "runs": [run_out(r) for r in t.runs]}
 
 
-@api.get("/runs/{run_id}/events")
-def run_events(run_id: int, db: Session = Depends(get_db), user=Depends(require("read"))):
-    run = db.get(Run, run_id)
-    if not run:
-        raise HTTPException(404, "Run not found")
-    return [
-        {"id": e.id, "stage": e.stage, "status": e.status}
-        for e in run.stage_events
-    ]
-
-
-@api.get("/runs/{run_id}/artifacts")
-def run_artifacts(run_id: int, db: Session = Depends(get_db), user=Depends(require("read"))):
-    run = db.get(Run, run_id)
-    if not run:
-        raise HTTPException(404, "Run not found")
-    return [
-        {"id": a.id, "stage": a.stage, "kind": a.kind, "body_text": a.body_text, "mime": a.mime}
-        for a in run.artifacts
-    ]
-
-
-@api.post("/runs/{run_id}/cancel")
-def cancel_run(run_id: int, db: Session = Depends(get_db), user=Depends(require("write"))):
-    run = db.get(Run, run_id)
-    if not run:
-        raise HTTPException(404, "Run not found")
-    if run.status in ("succeeded", "failed", "cancelled"):
-        raise HTTPException(409, f"already {run.status}")
-    run.status = "cancelled"
-    run.finished_at = datetime.now(timezone.utc)
-    task = db.get(Task, run.task_id)
-    if task:
-        task.status = "cancelled"
-    for approval in run.approvals:
-        if approval.status == "pending":
-            approval.status = "rejected"
-            approval.decision_note = "cancelled"
-            approval.decided_at = datetime.now(timezone.utc)
-    audit(db, user.id, "run.cancel", "run", run.id)
+@api.post("/tasks/{tid}/start", status_code=201)
+def start_task(tid: int, db: Session = Depends(get_db), u=Depends(require("approve"))):
+    t = get_or_404(db, Task, tid)
+    if any(r.status in ("queued", "running", "awaiting_approval") for r in t.runs):
+        raise HTTPException(409, "Task already has an active run")
+    r = Run(task_id=t.id, status="queued", mock_llm=orchestrator.MOCK)
+    t.status = "queued"
+    db.add(r)
+    db.flush()
+    audit(db, u, "run.start", "run", r.id)
     db.commit()
-    return run_out(run)
+    orchestrator.start_run(db, r)
+    return run_out(r)
+
+
+# ---------- runs ----------
+@api.get("/runs/{rid}")
+def get_run(rid: int, db: Session = Depends(get_db), _=Depends(require("read"))):
+    return run_out(get_or_404(db, Run, rid))
+
+
+@api.get("/runs/{rid}/events")
+def run_events(rid: int, db: Session = Depends(get_db), _=Depends(require("read"))):
+    r = get_or_404(db, Run, rid)
+    return [event_out(e) for e in sorted(r.stage_events, key=lambda e: e.id)]
+
+
+@api.get("/runs/{rid}/artifacts")
+def run_artifacts(rid: int, db: Session = Depends(get_db), _=Depends(require("read"))):
+    r = get_or_404(db, Run, rid)
+    return [artifact_out(a) for a in sorted(r.artifacts, key=lambda a: a.id)]
+
+
+@api.post("/runs/{rid}/cancel")
+def cancel_run(rid: int, db: Session = Depends(get_db), u=Depends(require("approve"))):
+    r = get_or_404(db, Run, rid)
+    if r.status in ("succeeded", "failed", "cancelled"):
+        raise HTTPException(409, f"Run already {r.status}")
+    r.status = "cancelled"
+    r.task.status = "cancelled"
+    r.finished_at = now()
+    for a in r.approvals:
+        if a.status == "pending":
+            a.status = "cancelled"
+    audit(db, u, "run.cancel", "run", r.id)
+    db.commit()
+    return run_out(r)
 
 
 # ---------- approvals ----------
 @api.get("/approvals")
-def list_approvals(status: str = "pending", db: Session = Depends(get_db), user=Depends(require("read"))):
+def list_approvals(status: str | None = None, db: Session = Depends(get_db), _=Depends(require("read"))):
     q = db.query(Approval)
-    if status != "all":
+    if status:
         q = q.filter_by(status=status)
-    rows = q.order_by(Approval.id.desc()).all()
-    return [
-        {
-            "id": a.id,
-            "run_id": a.run_id,
-            "gate": a.gate,
-            "status": a.status,
-            "decision_note": a.decision_note,
-            "created_at": a.created_at.isoformat() if a.created_at else None,
-        }
-        for a in rows
-    ]
+    return [approval_out(a) for a in q.order_by(Approval.id.desc())]
 
 
-@api.post("/approvals/{approval_id}/decide")
-def decide_approval(approval_id: int, body: DecideIn, db: Session = Depends(get_db), user=Depends(require("approve"))):
-    approval = db.get(Approval, approval_id)
-    if not approval:
-        raise HTTPException(404, "Approval not found")
-    if approval.status != "pending":
-        raise HTTPException(409, f"Already {approval.status}")
-    decision = body.decision.strip().lower()
-    if decision not in ("approve", "reject"):
-        raise HTTPException(422, "decision must be approve or reject")
-    if approval.gate not in ("after_plan", "before_publish"):
-        raise HTTPException(500, "invalid gate")
-    approval.status = "approved" if decision == "approve" else "rejected"
-    approval.decision_note = body.note
-    approval.decided_by = user.id
-    approval.decided_at = datetime.now(timezone.utc)
-    run = approval.run
-    if decision == "reject":
-        run.status = "failed"
-        run.finished_at = datetime.now(timezone.utc)
-        task = db.get(Task, run.task_id)
-        if task:
-            task.status = "failed"
-    else:
-        # resume stub: leave Agentic AI to advance stages; mark running
-        run.status = "running"
-        task = db.get(Task, run.task_id)
-        if task:
-            task.status = "running"
-    audit(db, user.id, f"approval.{approval.status}", "approval", approval.id)
+@api.post("/approvals/{aid}/decide")
+def decide(aid: int, body: DecideIn, db: Session = Depends(get_db), u=Depends(require("approve"))):
+    a = get_or_404(db, Approval, aid)
+    if a.status != "pending":
+        raise HTTPException(409, f"Approval already {a.status}")
+    a.status = "approved" if body.decision == "approve" else "rejected"
+    a.decided_by = u.id
+    a.decision_note = body.note
+    a.decided_at = now()
+    audit(db, u, f"approval.{a.status}", "approval", a.id, after={"gate": a.gate, "note": body.note})
     db.commit()
-    return {
-        "id": approval.id,
-        "run_id": approval.run_id,
-        "gate": approval.gate,
-        "status": approval.status,
-        "decision_note": approval.decision_note,
-    }
+    run = orchestrator.resume_after_gate(db, a)
+    return {"approval": approval_out(a), "run": run_out(run)}
 
 
 # ---------- memory ----------
 @api.get("/memory")
-def list_memory(db: Session = Depends(get_db), user=Depends(require("read"))):
-    rows = db.query(MemoryItem).order_by(MemoryItem.id.desc()).limit(100).all()
-    return [
-        {
-            "id": m.id,
-            "scope": m.scope,
-            "scope_id": m.scope_id,
-            "key": m.key,
-            "content": m.content,
-            "importance": m.importance,
-        }
-        for m in rows
-    ]
+def list_memory(scope: str | None = None, db: Session = Depends(get_db), _=Depends(require("read"))):
+    q = db.query(MemoryItem)
+    if scope:
+        q = q.filter_by(scope=scope)
+    return [memory_out(m) for m in q.order_by(MemoryItem.id)]
 
 
 @api.post("/memory", status_code=201)
-def create_memory(body: MemoryIn, db: Session = Depends(get_db), user=Depends(require("write"))):
-    item = MemoryItem(
-        scope=body.scope,
-        scope_id=body.scope_id,
-        key=body.key,
-        content=body.content,
-        importance=body.importance,
-    )
-    db.add(item)
+def create_memory(body: MemoryIn, db: Session = Depends(get_db), u=Depends(require("write"))):
+    m = MemoryItem(**body.model_dump())
+    db.add(m)
     db.flush()
-    audit(db, user.id, "memory.create", "memory", item.id)
+    audit(db, u, "memory.create", "memory_item", m.id)
     db.commit()
-    db.refresh(item)
-    return {"id": item.id, "scope": item.scope, "key": item.key, "content": item.content}
+    return memory_out(m)
 
 
-@api.get("/memory/{memory_id}")
-def get_memory(memory_id: int, db: Session = Depends(get_db), user=Depends(require("read"))):
-    item = db.get(MemoryItem, memory_id)
-    if not item:
-        raise HTTPException(404, "Memory not found")
-    return {
-        "id": item.id,
-        "scope": item.scope,
-        "scope_id": item.scope_id,
-        "key": item.key,
-        "content": item.content,
-        "importance": item.importance,
-    }
+@api.get("/memory/{mid}")
+def get_memory(mid: int, db: Session = Depends(get_db), _=Depends(require("read"))):
+    return memory_out(get_or_404(db, MemoryItem, mid))
+
+
+@api.patch("/memory/{mid}")
+def patch_memory(mid: int, body: MemoryPatch, db: Session = Depends(get_db), u=Depends(require("write"))):
+    m = get_or_404(db, MemoryItem, mid)
+    for k, v in body.model_dump(exclude_none=True).items():
+        setattr(m, k, v)
+    audit(db, u, "memory.update", "memory_item", m.id)
+    db.commit()
+    return memory_out(m)
+
+
+@api.delete("/memory/{mid}", status_code=204)
+def delete_memory(mid: int, db: Session = Depends(get_db), u=Depends(require("write"))):
+    m = get_or_404(db, MemoryItem, mid)
+    db.delete(m)
+    audit(db, u, "memory.delete", "memory_item", mid)
+    db.commit()
 
 
 # ---------- reports ----------
 @api.get("/reports")
-def list_reports(db: Session = Depends(get_db), user=Depends(require("read"))):
-    rows = db.query(Report).order_by(Report.id.desc()).all()
-    return [
-        {
-            "id": r.id,
-            "task_id": r.task_id,
-            "run_id": r.run_id,
-            "title": r.title,
-            "status": r.status,
-            "created_at": r.created_at.isoformat() if r.created_at else None,
-        }
-        for r in rows
-    ]
+def list_reports(db: Session = Depends(get_db), _=Depends(require("read"))):
+    return [report_out(r) for r in db.query(Report).order_by(Report.id.desc())]
 
 
-@api.get("/reports/{report_id}")
-def get_report(report_id: int, db: Session = Depends(get_db), user=Depends(require("read"))):
-    report = db.get(Report, report_id)
-    if not report:
-        raise HTTPException(404, "Report not found")
-    return {
-        "id": report.id,
-        "task_id": report.task_id,
-        "run_id": report.run_id,
-        "title": report.title,
-        "body_md": report.body_md,
-        "status": report.status,
-    }
+@api.get("/reports/{rid}")
+def get_report(rid: int, db: Session = Depends(get_db), _=Depends(require("read"))):
+    return report_out(get_or_404(db, Report, rid))
 
 
-@api.post("/reports/{report_id}/publish")
-def publish_report(report_id: int, db: Session = Depends(get_db), user=Depends(require("write"))):
-    report = db.get(Report, report_id)
-    if not report:
-        raise HTTPException(404, "Report not found")
-    report.status = "published"
-    report.published_by = user.id
-    report.published_at = datetime.now(timezone.utc)
-    audit(db, user.id, "report.publish", "report", report.id)
+@api.post("/reports/{rid}/publish")
+def publish_report(rid: int, db: Session = Depends(get_db), u=Depends(require("approve"))):
+    r = get_or_404(db, Report, rid)
+    if r.run_id:
+        gate = db.query(Approval).filter_by(run_id=r.run_id, gate="before_publish", status="approved").first()
+        if not gate:
+            raise HTTPException(409, "before_publish gate not approved")
+    r.status = "published"
+    r.published_by = u.id
+    r.published_at = now()
+    audit(db, u, "report.publish", "report", r.id)
     db.commit()
-    return {"id": report.id, "status": report.status}
+    return report_out(r)
 
 
 # ---------- dashboard + audit ----------
 @api.get("/dashboard/summary")
-def dashboard_summary(db: Session = Depends(get_db), user=Depends(require("read"))):
-    running = db.query(Run).filter(Run.status.in_(("running", "queued"))).count()
-    awaiting = db.query(Run).filter_by(status="awaiting_approval").count()
-    failed_24h = db.query(Run).filter_by(status="failed").count()
-    agents_by_status = dict(db.query(AgentDefinition.status, func.count()).group_by(AgentDefinition.status).all())
+def dashboard(db: Session = Depends(get_db), _=Depends(require("read"))):
+    tasks_by_status = dict(db.query(Task.status, func.count(Task.id)).group_by(Task.status).all())
+    runs_by_status = dict(db.query(Run.status, func.count(Run.id)).group_by(Run.status).all())
     return {
-        "running": running,
-        "awaiting_approval": awaiting,
-        "failed_24h": failed_24h,
-        "agents_by_status": agents_by_status,
+        "tasks_total": sum(tasks_by_status.values()),
+        "tasks_by_status": tasks_by_status,
+        "runs_by_status": runs_by_status,
+        "pending_approvals": db.query(Approval).filter_by(status="pending").count(),
+        "agents_active": db.query(AgentDefinition).filter_by(status="active").count(),
+        "reports_total": db.query(Report).count(),
+        "recent_audit": [audit_out(a) for a in db.query(AuditLog).order_by(AuditLog.id.desc()).limit(10)],
     }
 
 
+def audit_out(a):
+    return {"id": a.id, "actor_user_id": a.actor_user_id, "action": a.action, "entity_type": a.entity_type,
+            "entity_id": a.entity_id, "after_json": a.after_json, "created_at": iso(a.created_at)}
+
+
 @api.get("/audit")
-def audit_logs(limit: int = 200, db: Session = Depends(get_db), user=Depends(require("write"))):
-    # admin/operator (write covers operator+; viewers blocked)
-    rows = db.query(AuditLog).order_by(AuditLog.id.desc()).limit(limit).all()
-    return [
-        {
-            "id": row.id,
-            "actor_user_id": row.actor_user_id,
-            "action": row.action,
-            "entity_type": row.entity_type,
-            "entity_id": row.entity_id,
-            "created_at": row.created_at.isoformat() if row.created_at else None,
-        }
-        for row in rows
-    ]
+def list_audit(entity_type: str | None = None, limit: int = 100, db: Session = Depends(get_db),
+               _=Depends(require("read"))):
+    q = db.query(AuditLog)
+    if entity_type:
+        q = q.filter_by(entity_type=entity_type)
+    return [audit_out(a) for a in q.order_by(AuditLog.id.desc()).limit(min(limit, 500))]
 
 
 app.include_router(api)

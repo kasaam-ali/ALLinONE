@@ -26,8 +26,8 @@ def test_allowlist_enforced():
 def test_webhook_endpoint_and_tools_list(no_network):
     from app.main import app
     c = TestClient(app)
-    r = c.post("/integrations/webhooks/github", json={"event": "push"})
+    r = c.post("/api/v1/integrations/webhooks/github", json={"event": "push"})
     assert r.status_code == 200 and r.json()["stub"] is True and r.json()["data"]["fanout"] is False
-    assert c.post("/integrations/webhooks/Bad!Src", json={}).status_code in (404, 422)
-    t = c.get("/integrations/tools").json()
+    assert c.post("/api/v1/integrations/webhooks/Bad!Src", json={}).status_code in (404, 422)
+    t = c.get("/api/v1/integrations/tools").json()
     assert t["stub"] is True and {x["name"] for x in t["tools"]} == set(KNOWN_STUB_TOOLS)

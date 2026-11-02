@@ -19,11 +19,11 @@ def seed(db: Session) -> None:
     db.flush()
 
     agents = [
-        ("planner-1", "Atlas", "Break objectives into plans", ["http_fetch"]),
-        ("researcher-1", "Scout", "Gather context", ["http_fetch", "browser_stub"]),
-        ("executor-1", "Forge", "Execute steps with tools", ["http_fetch", "browser_stub", "webhook_inbound"]),
-        ("verifier-1", "Sentinel", "Verify outputs", ["http_fetch"]),
-        ("reporter-1", "Scribe", "Write reports", []),
+        ("planner", "Atlas", "Break objectives into plans", ["http_fetch"]),
+        ("researcher", "Scout", "Gather context", ["http_fetch", "browser_stub"]),
+        ("executor", "Forge", "Execute steps with tools", ["http_fetch", "browser_stub", "webhook_inbound"]),
+        ("verifier", "Sentinel", "Verify outputs", ["http_fetch"]),
+        ("reporter", "Scribe", "Write reports", []),
     ]
     if db.query(AgentDefinition).count() == 0:
         admin = db.query(User).filter_by(role="admin").first()
