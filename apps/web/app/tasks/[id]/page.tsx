@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Task detail with Run, StageEvent timeline, Artifacts, and animated approval gate decisions.
+// Job: GODMODE Frontend. Purpose: Task detail with Start run, StageEvent timeline, Artifacts, and animated approval gate decisions.
 "use client";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -16,7 +16,10 @@ function RunPanel({ runId }: { runId: string | number }) {
   const artifacts = useApi(() => data.runArtifacts(runId), [runId]);
   return (
     <div className="split">
-      <div className="panel"><h2>Run <Resource r={run}>{(r) => <><span className="mono">#{r.id}</span> <Badge value={r.status} /> {r.stage && <span className="muted">stage {r.stage}</span>}</>}</Resource></h2>
+      <div className="panel"><h2>Run <Resource r={run}>{(r) => {
+        const stage = r.current_stage || r.stage;
+        return <><span className="mono">#{r.id}</span> <Badge value={r.status} /> {stage && <span className="muted">stage {stage}</span>}</>;
+      }}</Resource></h2>
         <Resource r={events} empty="No stage events yet.">
           {(rows) => <ul className="timeline">{rows.map((e) => <li key={e.id}><span className="muted">{fmt(e.created_at)}</span><span className="mono">{e.stage}</span><span>{e.message}</span>{e.status && <Badge value={e.status} />}</li>)}</ul>}
         </Resource>
@@ -54,25 +57,35 @@ export default function TaskDetail() {
   const task = useApi(() => data.task(id), [id]);
   const approvals = useApi(() => data.approvals(), []);
   const [err, setErr] = useState("");
+  const [starting, setStarting] = useState(false);
   async function decide(aid: string | number, d: ApprovalDecision) {
     setErr("");
     try { await data.decide(aid, d); approvals.reload(); task.reload(); }
     catch (e) { setErr((e as Error).message); }
+  }
+  async function start() {
+    setErr(""); setStarting(true);
+    try { await data.startTask(id); task.reload(); approvals.reload(); }
+    catch (e) { setErr((e as Error).message); }
+    finally { setStarting(false); }
   }
   return (
     <Page>
       <Resource r={task} empty="Task not found.">
         {(t) => {
           const mine = (approvals.data || []).filter((a) => String(a.task_id) === String(t.id));
+          const canStart = !t.latest_run_id || ["draft", "queued", "failed", "rejected", "succeeded", "completed", "cancelled"].includes(String(t.status));
           return (
             <>
-              <div className="head"><span className="mono">#{t.id}</span><h1>{t.title || `Task ${t.id}`}</h1><Badge value={t.status} /></div>
-              {t.prompt && <div className="panel pad"><h2>Objective</h2><div>{t.prompt}</div></div>}
+              <div className="head"><span className="mono">#{t.id}</span><h1>{t.title || `Task ${t.id}`}</h1><Badge value={t.status} />
+                {canStart && <button className="sm" disabled={starting} onClick={start}>{starting ? "Starting..." : "Start run"}</button>}
+              </div>
+              {(t.description || t.prompt) && <div className="panel pad"><h2>Objective</h2><div>{t.description || t.prompt}</div></div>}
               <div className="panel"><h2>Approval gates (after_plan, before_publish)</h2>
                 {err && <ErrorBox message={err} />}
                 {approvals.error ? <ErrorBox message={approvals.error} onRetry={approvals.reload} /> : mine.length === 0 ? <p className="muted" style={{ padding: "0 14px 12px" }}>No gates opened for this task.</p> : mine.map((a) => <Gate key={a.id} a={a} onDecide={decide} />)}
               </div>
-              {t.latest_run_id != null ? <RunPanel runId={t.latest_run_id} /> : <div className="panel pad muted">No run started. Stage events and artifacts appear once a run exists.</div>}
+              {t.latest_run_id != null ? <RunPanel runId={t.latest_run_id} /> : <div className="panel pad muted">No run started. Use Start run to create a Run and open gates.</div>}
             </>
           );
         }}

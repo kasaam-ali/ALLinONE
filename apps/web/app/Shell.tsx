@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: App shell with sidebar nav, animated active pill, fixture badge, page transitions, and auth guard.
+// Job: GODMODE Frontend. Purpose: App shell with sidebar nav, animated active pill, Live/Fixture chip, page transitions, and auth guard.
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -30,9 +30,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     else setReady(true);
   }, [path, router]);
   useEffect(() => {
-    const on = () => setFixture(true);
-    window.addEventListener("gm:fixture", on);
-    return () => window.removeEventListener("gm:fixture", on);
+    setFixture(forcedFixtures());
+    const onFix = () => setFixture(true);
+    const onLive = () => { if (!forcedFixtures()) setFixture(false); };
+    window.addEventListener("gm:fixture", onFix);
+    window.addEventListener("gm:live", onLive);
+    return () => { window.removeEventListener("gm:fixture", onFix); window.removeEventListener("gm:live", onLive); };
   }, []);
   if (path === "/login") return <>{children}</>;
   if (!ready) return null;

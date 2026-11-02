@@ -1,5 +1,5 @@
 // Job: GODMODE Frontend. Purpose: Typed /api/v1 client, tokens, and contract path helpers.
-import type { Agent, Approval, ApprovalDecision, Artifact, AuditEntry, DashboardSummary, LoginResponse, Report, Run, StageEvent, Task, User } from "./types";
+import type { Agent, Approval, ApprovalDecision, Artifact, AuditEntry, DashboardSummary, LoginResponse, Report, Run, StageEvent, Task, TaskCreate, User } from "./types";
 
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1").replace(/\/$/, "");
 const ACCESS = "gm_access_token";
@@ -77,6 +77,8 @@ export const api = {
   agents: () => request<Agent[]>(paths.agents),
   tasks: () => request<Task[]>(paths.tasks),
   task: (id: string) => request<Task>(`${paths.tasks}/${id}`),
+  createTask: (body: TaskCreate) => request<Task>(paths.tasks, post(body)),
+  startTask: (id: string | number) => request<Run>(`${paths.tasks}/${id}/start`, { method: "POST", body: "{}" }),
   run: (id: string | number) => request<Run>(`${paths.runs}/${id}`),
   runEvents: (id: string | number) => request<StageEvent[]>(`${paths.runs}/${id}/events`),
   runArtifacts: (id: string | number) => request<Artifact[]>(`${paths.runs}/${id}/artifacts`),

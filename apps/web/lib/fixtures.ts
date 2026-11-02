@@ -12,12 +12,12 @@ export const fx = {
     { id: 5, slug: "reporter", name: "Scribe", role_prompt: "Write reports", tools_allowlist: [], status: "active", version: 1 },
   ] as Agent[],
   tasks: [
-    { id: 101, title: "Competitor pricing scan, Q4", prompt: "Collect public pricing for 5 competitors and summarize deltas.", status: "awaiting_approval", created_at: ago(14), latest_run_id: 501 },
-    { id: 102, title: "Draft vendor outreach list", prompt: "Find 20 logistics vendors in Karachi with contact pages.", status: "running", created_at: ago(42), latest_run_id: 502 },
-    { id: 103, title: "Weekly ops report", prompt: "Summarize last week's completed runs.", status: "completed", created_at: ago(380), latest_run_id: 503 },
-    { id: 104, title: "CRM duplicate cleanup", prompt: "Identify duplicate leads.", status: "failed", created_at: ago(900), latest_run_id: null },
+    { id: 101, title: "Competitor pricing scan, Q4", description: "Collect public pricing for 5 competitors and summarize deltas.", status: "awaiting_approval", created_at: ago(14), latest_run_id: 501 },
+    { id: 102, title: "Draft vendor outreach list", description: "Find 20 logistics vendors in Karachi with contact pages.", status: "running", created_at: ago(42), latest_run_id: 502 },
+    { id: 103, title: "Weekly ops report", description: "Summarize last week's completed runs.", status: "completed", created_at: ago(380), latest_run_id: 503 },
+    { id: 104, title: "CRM duplicate cleanup", description: "Identify duplicate leads.", status: "failed", created_at: ago(900), latest_run_id: null },
   ] as Task[],
-  run: (id: string | number): Run => ({ id, task_id: 101, status: "awaiting_approval", stage: "plan", started_at: ago(14) }),
+  run: (id: string | number): Run => ({ id, task_id: 101, status: "awaiting_approval", current_stage: "plan", stage: "plan", started_at: ago(14) }),
   events: (id: string | number): StageEvent[] => [
     { id: 1, run_id: id, stage: "plan", status: "completed", message: "Plan drafted with 4 steps", created_at: ago(13) },
     { id: 2, run_id: id, stage: "plan", status: "awaiting_approval", message: "Gate after_plan opened", created_at: ago(12) },

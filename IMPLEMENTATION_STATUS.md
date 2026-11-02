@@ -1,53 +1,43 @@
 # GODMODE IMPLEMENTATION_STATUS
 
 Owned by: **GODMODE Architect** (honesty bar)  
-Updated: 2026-11-03 00:18 Asia/Karachi  
+Updated: 2026-11-03 00:27 Asia/Karachi  
 Deadline: **7:00 AM Asia/Karachi = GitHub-pushable MVP**
 
-## STATUS: RED
-**E2E: NO. No fake green.**
-
-Timeline (CTO): ~00:15 PKT pytest briefly green, then thrash broke the tree (ImportError / Agent vs AgentDefinition drift). Architect `/api/v1` design is the **locked winner** (no legacy `/workforce` revert). Coherent `/api/v1` cutover in progress under Backend ownership of `main.py` + seed + tests.
+## STATUS: YELLOW
+- API `/api/v1` pytest: **GREEN / stable** - **17/17**.
+- **BUG-QA-002**: **CLOSED**.
+- Live `:8010`: UP. Architect verified login + `DashboardSummary` keys live; `/api/v1/integrations` **404 expected** (stub).
+- **SoT synced** to live Backend DTOs (ARCHITECTURE): `DashboardSummary`, Agent (`slug`/`role_prompt`/`tools_allowlist`/`status`), `User.display_name`, Audit `actor_user_id`+`after_json`. No old KPI fields.
+- Frontend: Motion premium **DONE** (CTO: build + vitest 10/10). create-task form gap noted.
+- **Live web smoke paths: GREEN** (CTO + Architect DTO/login/health checks). `/integrations` 404 expected.
+- Agentic: two-gate LangGraph OK.
+- **E2E: NO** (compose still unproven) — holds YELLOW.
+- Docker: missing on box.
+- Ports: 8010 / 3010.
 
 ## Truth
-| Check | Value |
-|-------|-------|
-| Working end-to-end | **NO** |
-| Repo | `/workspace/godmode/repo` |
-| pytest | not trustworthy until Backend announces green pass count after cutover |
-| Compose ports target | API 8010, Web 3010 |
-| Prod deploy | none |
+| Check | Value | Evidence |
+|-------|-------|----------|
+| E2E | NO | compose blocked |
+| pytest | 17 stable GREEN | Architect + QA |
+| live :8010 | UP | health/ready/login |
+| live web smoke paths | GREEN | CTO; Architect DTO verify |
+| /integrations | 404 expected | stub |
+| DashboardSummary | live keys only | Architect curl |
+| Motion polish | DONE | CTO |
+| create-task form | gap noted | CTO |
+| BUG-QA-002 | CLOSED | QA + Backend |
+| Docker compose | blocked | Docker not on box |
 
-## Canonical contract (winner)
-- Prefix `/api/v1`
-- `POST /approvals/{id}/decide`
-- `/agents`, `/memory`, `/dashboard/summary`
-- Domain: Task, Run, StageEvent, Artifact, Approval, AgentDefinition
-- Gates: `after_plan` + `before_publish` only
-- SoT: `handoffs/ARCHITECTURE.md`, `handoffs/adrs/001-008`
-
-## Pushable MVP checklist
-| Item | Status |
-|------|--------|
-| ORM matches `001_init.sql` | cutover in progress |
-| `/api/v1` + decide | cutover in progress (locked design) |
-| Two gates in orchestrator | remediated earlier; protect from thrash |
-| Command Center | wip Frontend |
-| compose 8010/3010 | todo |
-| READMEs/headers/no-em-dashes | partial |
-| local git commits | todo |
-| pytest green | **RED** until announced |
-
-## Ownership freeze (CTO)
-- Backend: `apps/api/app/main.py`, seed, tests
-- Agentic: `orchestrator.py` only
-- Frontend: `apps/web` only
-- Database: `infra/migrations` only
-- Architect: SoT + honest status; re-review after green pytest + decide
-
-## Architect gaps
+## Gaps
 | ID | Status |
 |----|--------|
-| G1 gates | remediated (watch regressions) |
-| G2 schema/ORM | cutover |
-| G3 API routes | cutover (design locked) |
+| G1–G3 | closed |
+| BUG-QA-002 | CLOSED |
+| Motion polish | DONE |
+| create-task form | open (noted) |
+| E2E / compose | **open** (holds YELLOW) |
+
+## SoT
+`handoffs/ARCHITECTURE.md` (mirrored `repo/docs/ARCHITECTURE.md`), `handoffs/adrs/001-008`.

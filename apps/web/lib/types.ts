@@ -25,12 +25,20 @@ export interface Agent {
   status: string;
   version?: number;
 }
+export interface TaskCreate {
+  title: string;
+  description?: string;
+  priority?: number;
+}
 export interface Task {
   id: string | number;
   title?: string;
+  description?: string;
   prompt?: string;
+  priority?: number;
   status: string;
   created_at?: string;
+  updated_at?: string;
   latest_run_id?: string | number | null;
   [k: string]: unknown;
 }
@@ -38,9 +46,12 @@ export interface Run {
   id: string | number;
   task_id: string | number;
   status: string;
+  current_stage?: string;
   stage?: string;
   started_at?: string;
   finished_at?: string;
+  error_summary?: string | null;
+  mock_llm?: boolean;
 }
 export interface StageEvent {
   id: string | number;

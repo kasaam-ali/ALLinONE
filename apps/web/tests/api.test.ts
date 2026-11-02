@@ -27,3 +27,18 @@ describe("api client", () => {
     await expect(api.dashboard()).rejects.toThrow(/unreachable/);
   });
 });
+
+  it("creates a task via POST /tasks", async () => {
+    const f = vi.spyOn(globalThis, "fetch").mockResolvedValue(ok({ id: 9, title: "n", status: "draft" }));
+    await api.createTask({ title: "n", description: "d" });
+    expect(f.mock.calls[0][0]).toBe("/api/v1/tasks");
+    expect(f.mock.calls[0][1]!.method).toBe("POST");
+    expect(JSON.parse(f.mock.calls[0][1]!.body as string)).toEqual({ title: "n", description: "d" });
+  });
+
+  it("starts a task via POST /tasks/{id}/start", async () => {
+    const f = vi.spyOn(globalThis, "fetch").mockResolvedValue(ok({ id: 1, task_id: 9, status: "queued" }));
+    await api.startTask(9);
+    expect(f.mock.calls[0][0]).toBe("/api/v1/tasks/9/start");
+  });
+

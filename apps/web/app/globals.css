@@ -98,3 +98,11 @@ input::placeholder { color: var(--muted); }
 .err { color: var(--bad); margin: 0; font-size: 12px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 @media (max-width: 900px) { .shell { grid-template-columns: 1fr; } .side { display: none; } .kpis { grid-template-columns: repeat(2, 1fr); } .split { grid-template-columns: 1fr; } }
+
+/* Job: GODMODE Frontend. Purpose: Form stack styles for create-task. */
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12px; }
+.field input, .field textarea { color: var(--text); }
+.panel.pad { padding: 14px 16px 16px; }
+.chip.live { background: rgba(63,185,80,0.12); color: var(--ok); }
+.head button.sm { margin-left: auto; }
