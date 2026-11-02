@@ -1,11 +1,13 @@
 -- Job: GODMODE Database
--- Purpose: Canonical Postgres DDL for the Architect-locked MVP domain model.
+-- Purpose: Canonical Postgres DDL for the Architect-locked MVP domain model (G2).
 
 -- GODMODE Postgres schema. Architect LOCKED model (CTO 2026-11-03).
 -- Source of truth for migrations: also copied to /workspace/godmode/repo/infra/migrations/
 -- Entities: users, agent_definitions, tasks, runs, stage_events, artifacts,
 --           approvals, audit_logs, memory_items, reports
 -- AgentInstance CUT for MVP. SoT = Postgres. Local MVP schema, not a production claim.
+-- Approval gates ONLY: after_plan | before_publish.
+-- Report publish links via publish_approval_id -> approvals(before_publish).
 -- Updated: 2026-11-03 Asia/Karachi. Owner: GODMODE Database
 
 BEGIN;
@@ -142,7 +144,7 @@ CREATE TABLE artifacts (
 
 CREATE INDEX idx_artifacts_run_id ON artifacts (run_id, stage);
 
--- approvals (gates: after_plan | before_execute | before_publish; MVP uses two hard gates)
+-- approvals (gates ONLY: after_plan | before_publish; Architect G2)
 CREATE TABLE approvals (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     run_id          UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
@@ -154,7 +156,7 @@ CREATE TABLE approvals (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT approvals_gate_check CHECK (gate IN (
-        'after_plan', 'before_execute', 'before_publish'
+        'after_plan', 'before_publish'
     )),
     CONSTRAINT approvals_status_check CHECK (status IN (
         'pending', 'approved', 'rejected'
@@ -205,21 +207,32 @@ CREATE INDEX idx_memory_items_expires ON memory_items (expires_at) WHERE expires
 
 -- reports
 CREATE TABLE reports (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    run_id          UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
-    task_id         UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-    title           TEXT NOT NULL,
-    body_md         TEXT NOT NULL DEFAULT '',
-    status          TEXT NOT NULL DEFAULT 'draft',
-    published_by    UUID REFERENCES users(id) ON DELETE SET NULL,
-    published_at    TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT reports_status_check CHECK (status IN ('draft', 'published'))
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id               UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    task_id              UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    title                TEXT NOT NULL,
+    body_md              TEXT NOT NULL DEFAULT '',
+    status               TEXT NOT NULL DEFAULT 'draft',
+    publish_approval_id  UUID REFERENCES approvals(id) ON DELETE SET NULL,
+    published_by         UUID REFERENCES users(id) ON DELETE SET NULL,
+    published_at         TIMESTAMPTZ,
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT reports_status_check CHECK (status IN ('draft', 'published')),
+    CONSTRAINT reports_published_fields_check CHECK (
+        (status = 'draft' AND published_at IS NULL AND publish_approval_id IS NULL)
+        OR
+        (status = 'published' AND published_at IS NOT NULL AND publish_approval_id IS NOT NULL AND published_by IS NOT NULL)
+    )
 );
 
 CREATE INDEX idx_reports_task_id ON reports (task_id, created_at DESC);
 CREATE INDEX idx_reports_run_id ON reports (run_id);
+CREATE INDEX idx_reports_publish_approval ON reports (publish_approval_id)
+    WHERE publish_approval_id IS NOT NULL;
+
+-- App rule: set status=published only when approvals has
+-- (run_id, gate=before_publish, status=approved); store that id in publish_approval_id.
 
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$

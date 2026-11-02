@@ -21,9 +21,10 @@ psql "$DATABASE_URL" -f infra/migrations/001_init.sql
 psql "$DATABASE_URL" -f infra/migrations/002_seed.sql
 ```
 
-Admin user password is hashed by the API seed from `GODMODE_ADMIN_PASSWORD` / `SEED_ADMIN_PASSWORD` (see repo `.env.example`).
+## G2 notes
 
-## Notes
+- Primary tables: `runs`, `stage_events`, `artifacts` (not `plans` / `steps`)
+- Approval gates only: `after_plan`, `before_publish`
+- `reports.status=published` requires `publish_approval_id` pointing at an approved `before_publish` row
 
-- Schema matches Architect SoT: `/workspace/godmode/handoffs/ARCHITECTURE.md`
-- Backend ORM must use these table names (`runs`, `stage_events`, `agent_definitions`, etc.)
+Admin password is hashed by the API seed from `GODMODE_ADMIN_PASSWORD` / `SEED_ADMIN_PASSWORD`.

@@ -1,3 +1,8 @@
-# API application package
+# app/
 
-Source for the API: `main.py` routes, `models.py` ORM, `security.py` auth, `orchestrator.py` LangGraph graph, `queue.py` Redis stub, `seed.py` demo data, `tools/` stub tools.
+FastAPI application package for GODMODE API.
+
+- `orchestrator.py`: LangGraph plan -> research -> execute -> verify -> report (Agentic AI)
+- `main.py`: HTTP routes, approvals, audit (Backend)
+- `models.py` / `db.py`: ORM and engine (Backend / Database)
+- `tools/`: stub tool registry for research/execute stages (Integrations / Backend)
