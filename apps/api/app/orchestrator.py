@@ -4,20 +4,39 @@ Flow: plan -> after_plan gate -> research -> execute -> verify -> before_publish
 Each invocation runs from run.current_stage until it hits a pending gate or finishes.
 Approval decisions resume the run via resume_after_gate. Mock LLM by default.
 """
+from __future__ import annotations
+
+import json
 import os
 from datetime import datetime, timezone
 from typing import TypedDict
-from langgraph.graph import StateGraph, END
+
+from langgraph.graph import END, StateGraph
 from sqlalchemy.orm import Session
-from .models import Run, StageEvent, Artifact, Approval, AgentDefinition, Report
-from .tools import run_phase_tools, agents_from_definitions
+
+from .memory_hooks import format_context, load_context, memory_key, upsert_stage_memory
+from .models import AgentDefinition, Approval, Artifact, Report, Run, StageEvent
+from .tools import agents_from_definitions, run_phase_tools
 
 MOCK = os.getenv("GODMODE_MOCK_LLM", "1") == "1"
 GATES = ("after_plan", "before_publish")
 STAGES = ("plan", "research", "execute", "verify", "report")
 # Gate that must be approved after a stage completes.
 GATE_AFTER = {"plan": "after_plan", "verify": "before_publish"}
-SLUG_FOR = {"plan": "planner", "research": "researcher", "execute": "executor", "verify": "verifier", "report": "reporter"}
+SLUG_FOR = {
+    "plan": "planner",
+    "research": "researcher",
+    "execute": "executor",
+    "verify": "verifier",
+    "report": "reporter",
+}
+KIND_MAP = {
+    "plan": "plan",
+    "research": "research",
+    "execute": "result",
+    "verify": "verification",
+    "report": "report",
+}
 
 
 def _now():
@@ -30,7 +49,7 @@ class RunState(TypedDict, total=False):
     halted: bool
 
 
-def _mock_output(stage: str, title: str, tool_calls: list) -> str:
+def _mock_output(stage: str, title: str, tool_calls: list, memory_blurb: str) -> str:
     base = {
         "plan": f"Plan for '{title}': 1) research 2) execute 3) verify 4) report",
         "research": f"Research notes for '{title}' (mock)",
@@ -38,14 +57,20 @@ def _mock_output(stage: str, title: str, tool_calls: list) -> str:
         "verify": f"Verification passed for '{title}' (mock)",
         "report": f"# Report: {title}\n\nAll stages completed (mock LLM).",
     }[stage]
+    if memory_blurb:
+        base += f"\n\n{memory_blurb}"
     if tool_calls:
         base += f"\nTool calls: {[c['tool'] for c in tool_calls]}"
+        base += "\n\n## tool_calls\n```json\n" + json.dumps(tool_calls, default=str) + "\n```"
     return base
 
 
 def _agent_id(db: Session, stage: str):
-    a = db.query(AgentDefinition).filter(AgentDefinition.slug.like(f"{SLUG_FOR[stage]}%"),
-                                         AgentDefinition.status == "active").first()
+    a = (
+        db.query(AgentDefinition)
+        .filter(AgentDefinition.slug.like(f"{SLUG_FOR[stage]}%"), AgentDefinition.status == "active")
+        .first()
+    )
     return a.id if a else None
 
 
@@ -56,31 +81,62 @@ def build_graph(db: Session):
         run.current_stage = stage
         run.status = "running"
         run.task.status = "running"
-        ev = StageEvent(run_id=run.id, stage=stage, status="started", agent_definition_id=_agent_id(db, stage))
+        ev = StageEvent(
+            run_id=run.id,
+            stage=stage,
+            status="started",
+            agent_definition_id=_agent_id(db, stage),
+        )
         db.add(ev)
         db.flush()
-        calls = []
+
+        mem_items = load_context(db, run.task_id)
+        memory_blurb = format_context(mem_items)
+
+        calls: list = []
         if stage in ("research", "execute"):
             defs = db.query(AgentDefinition).filter_by(status="active").all()
             calls = run_phase_tools(stage, run.task.title, agents_from_definitions(defs))
-        body = _mock_output(stage, run.task.title, calls)
-        kind_map = {"plan": "plan", "research": "research", "execute": "result", "verify": "verification", "report": "report"}
-        art = Artifact(run_id=run.id, stage=stage, kind=kind_map.get(stage, "other"),
-                       body_text=body, mime="text/markdown")
-        if calls:
-            # Integrations stub tool_calls on the stage artifact body (SoT still Artifact row)
-            art.body_text = body + "\n\n<!-- tool_calls:" + str(calls) + " -->"
+
+        body = _mock_output(stage, run.task.title, calls, memory_blurb)
+        art = Artifact(
+            run_id=run.id,
+            stage=stage,
+            kind=KIND_MAP.get(stage, "other"),
+            body_text=body,
+            mime="text/markdown",
+        )
         db.add(art)
         db.flush()
         ev.status = "succeeded"
         ev.output_ref = f"artifact:{art.id}"
+
+        mem = upsert_stage_memory(
+            db,
+            task_id=run.task_id,
+            run_id=run.id,
+            stage=stage,
+            content=body[:2000],
+        )
+        # Soft pointer so report/artifacts can cite memory without a new column.
+        if mem and memory_key(run.id, stage) not in (art.body_text or ""):
+            art.body_text = (art.body_text or "") + f"\n\nmemory_ref: {mem.key}"
+
         if stage == "report":
-            db.add(Report(run_id=run.id, task_id=run.task_id, title=f"Report: {run.task.title}", body_md=body))
+            db.add(
+                Report(
+                    run_id=run.id,
+                    task_id=run.task_id,
+                    title=f"Report: {run.task.title}",
+                    body_md=art.body_text or body,
+                )
+            )
             run.status = "succeeded"
             run.task.status = "succeeded"
             run.finished_at = _now()
             db.commit()
             return {"halted": True}
+
         gate = GATE_AFTER.get(stage)
         nxt = STAGES[STAGES.index(stage) + 1]
         if gate:
@@ -102,8 +158,10 @@ def build_graph(db: Session):
 
 def advance(db: Session, run: Run) -> Run:
     """Run the graph from the run's current stage until a gate or completion."""
-    build_graph(db).invoke({"run_id": run.id, "stage": run.current_stage, "halted": False},
-                           {"recursion_limit": 20})
+    build_graph(db).invoke(
+        {"run_id": run.id, "stage": run.current_stage, "halted": False},
+        {"recursion_limit": 20},
+    )
     db.refresh(run)
     return run
 

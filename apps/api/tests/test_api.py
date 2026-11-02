@@ -116,6 +116,31 @@ def test_reject_and_cancel(c):
     assert c.post(f"{V}/runs/{run2['id']}/cancel", headers=h).status_code == 409
 
 
+
+def test_run_writes_memory_and_tool_calls(c):
+    """Prove orchestrator memory hooks + run_phase_tools land on artifacts (two gates)."""
+    h = hdr(login(c))
+    t, run = _start(c, h, "Hooks proof")
+    g1 = run["pending_approvals"][0]["id"]
+    run = c.post(f"{V}/approvals/{g1}/decide", headers=h, json={"decision": "approve"}).json()["run"]
+    g2 = run["pending_approvals"][0]["id"]
+    run = c.post(f"{V}/approvals/{g2}/decide", headers=h, json={"decision": "approve"}).json()["run"]
+    assert run["status"] == "succeeded"
+    rid = run["id"]
+    arts = {a["stage"]: a for a in c.get(f"{V}/runs/{rid}/artifacts", headers=h).json()}
+    assert set(arts) == {"plan", "research", "execute", "verify", "report"}
+    for stage in ("research", "execute"):
+        body = arts[stage]["body_text"] or ""
+        assert "## tool_calls" in body
+        assert '"stub": true' in body
+        assert "http_fetch" in body
+        assert f"memory_ref: run:{rid}:stage:{stage}" in body
+    mem = c.get(f"{V}/memory", headers=h).json()
+    keys = {m["key"] for m in mem if m.get("scope") == "task" and m.get("scope_id") == str(t["id"])}
+    for stage in ("plan", "research", "execute", "verify", "report"):
+        assert f"run:{rid}:stage:{stage}" in keys
+
+
 def test_memory_crud(c):
     h = hdr(login(c))
     m = c.post(f"{V}/memory", headers=h, json={"key": "k1", "content": "v1"}).json()
