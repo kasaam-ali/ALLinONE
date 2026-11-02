@@ -33,6 +33,9 @@ function RunPanel({ runId }: { runId: string | number }) {
   );
 }
 
+const GATE_TITLES: Record<string, string> = { after_plan: "After plan", before_publish: "Before publish" };
+const gateTitle = (g: string) => GATE_TITLES[g] ?? g.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
 function Gate({ a, onDecide }: { a: Approval; onDecide: (id: Approval["id"], d: ApprovalDecision) => Promise<void> }) {
   const [busy, setBusy] = useState<ApprovalDecision | null>(null);
   const reduce = useReducedMotion();
@@ -41,13 +44,14 @@ function Gate({ a, onDecide }: { a: Approval; onDecide: (id: Approval["id"], d: 
     <motion.div className="gate" layout={!reduce}
       animate={reduce ? undefined : a.status === "approved" ? { backgroundColor: ["rgba(63,185,80,0.12)", "rgba(63,185,80,0)"] } : a.status === "rejected" ? { backgroundColor: ["rgba(242,85,90,0.12)", "rgba(242,85,90,0)"], x: [0, -3, 3, 0] } : undefined}
       transition={{ duration: 0.6 }}>
-      <span className="name">{a.gate}</span>
+      <span className="name">{gateTitle(a.gate)} <span className="mono muted">{a.gate}</span></span>
       <AnimatePresence mode="wait"><motion.span key={a.status} initial={reduce ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}><Badge value={a.status} /></motion.span></AnimatePresence>
       <span className="muted">{fmt(a.created_at)}</span>
       {pending && <div className="actions">
         <motion.button whileTap={reduce ? undefined : { scale: 0.96 }} disabled={!!busy} onClick={async () => { setBusy("approve"); await onDecide(a.id, "approve"); setBusy(null); }}>{busy === "approve" ? "Approving..." : "Approve"}</motion.button>
         <motion.button whileTap={reduce ? undefined : { scale: 0.96 }} className="bad" disabled={!!busy} onClick={async () => { setBusy("reject"); await onDecide(a.id, "reject"); setBusy(null); }}>{busy === "reject" ? "Rejecting..." : "Reject"}</motion.button>
       </div>}
+      {pending && <p className="muted" style={{ flexBasis: "100%", margin: "4px 0 0" }}>Approve continues the run. Reject stops it.</p>}
     </motion.div>
   );
 }

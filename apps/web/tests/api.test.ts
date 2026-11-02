@@ -7,7 +7,7 @@ afterEach(() => { vi.restoreAllMocks(); tokens.clear(); });
 
 describe("api client", () => {
   it("uses the canonical /api/v1 paths", () => {
-    expect(paths).toMatchObject({ agents: "/agents", memory: "/memory", dashboard: "/dashboard/summary", me: "/auth/me" });
+    expect(paths).toMatchObject({ agents: "/agents", memory: "/memory", dashboard: "/dashboard/summary", me: "/auth/me", integrations: "/integrations" });
   });
   it("logs in and stores the token, then sends it", async () => {
     const f = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(ok({ access_token: "abc" })).mockResolvedValueOnce(ok({ id: 1, email: "a@b.c", role: "admin" }));
@@ -21,6 +21,11 @@ describe("api client", () => {
     await api.decide(7, "approve", "ok");
     expect(f.mock.calls[0][0]).toBe("/api/v1/approvals/7/decide");
     expect(JSON.parse(f.mock.calls[0][1]!.body as string)).toEqual({ decision: "approve", note: "ok" });
+  });
+  it("lists integrations via GET /integrations (empty list)", async () => {
+    const f = vi.spyOn(globalThis, "fetch").mockResolvedValue(ok([]));
+    await expect(api.integrations()).resolves.toEqual([]);
+    expect(f.mock.calls[0][0]).toBe("/api/v1/integrations");
   });
   it("reports an unreachable API clearly", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));

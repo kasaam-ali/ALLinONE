@@ -14,6 +14,7 @@ export const data = {
   runArtifacts: (id: string | number) => liveOr(() => api.runArtifacts(id), () => fx.artifacts(id)),
   approvals: () => liveOr(() => api.approvals(), () => fx.approvals),
   audit: () => liveOr(() => api.audit({ limit: 200 }), () => fx.audit),
+  integrations: () => liveOr(api.integrations, () => [] as unknown[]),
   reports: () => liveOr(api.reports, () => fx.reports),
   createTask: async (body: TaskCreate): Promise<Task> => {
     if (forcedFixtures()) {

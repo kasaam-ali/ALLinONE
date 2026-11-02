@@ -48,7 +48,7 @@ export default function Dashboard() {
                   {(approvals.data || []).filter((a) => a.status === "pending").length === 0 ? <p className="muted" style={{ padding: "0 14px 12px" }}>No gates waiting on a decision.</p> : (
                     <table><thead><tr><th>Gate</th><th>Task</th><th>Opened</th></tr></thead>
                       <StaggerBody>{(approvals.data || []).filter((a) => a.status === "pending").map((a) => (
-                        <Row key={a.id}><td className="mono">{a.gate}</td><td>{a.task_id != null ? <Link href={`/tasks/${a.task_id}`}>Task {a.task_id}</Link> : "-"}</td><td className="muted">{fmt(a.created_at)}</td></Row>
+                        <Row key={a.id}><td className="mono">{a.gate}</td><td>{a.task_id != null ? <Link href={`/tasks/${a.task_id}`}>Decide on task {a.task_id}</Link> : "-"}</td><td className="muted">{fmt(a.created_at)}</td></Row>
                       ))}</StaggerBody></table>
                   )}
                 </div>
