@@ -2,7 +2,9 @@
 
 Flow: plan -> after_plan gate -> research -> execute -> verify -> before_publish gate -> report.
 Each invocation runs from run.current_stage until it hits a pending gate or finishes.
-Approval decisions resume the run via resume_after_gate. Mock LLM by default.
+Approval decisions resume via resume_after_gate by re-invoking from Postgres current_stage
+(not a LangGraph checkpointer). start/decide stay inline blocking until DevOps Redis worker.
+Mock LLM by default (GODMODE_MOCK_LLM=1).
 """
 from __future__ import annotations
 

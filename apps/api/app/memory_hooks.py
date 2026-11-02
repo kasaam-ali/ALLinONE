@@ -40,9 +40,19 @@ def load_context(db: Session, task_id: int, *, limit: int = 20) -> list[MemoryIt
         .limit(limit)
         .all()
     )
-    # Drop expired
+    # Drop expired (normalize naive timestamps from SQLite)
     now = _now()
-    return [m for m in rows if m.expires_at is None or m.expires_at > now]
+    out = []
+    for m in rows:
+        exp = m.expires_at
+        if exp is None:
+            out.append(m)
+            continue
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if exp > now:
+            out.append(m)
+    return out
 
 
 def format_context(items: list[MemoryItem]) -> str:

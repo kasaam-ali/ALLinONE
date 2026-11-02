@@ -47,3 +47,35 @@ def test_memory_hooks_upsert_and_load(tmp_path):
 
 def test_format_context_empty():
     assert format_context([]) == ""
+
+
+def test_load_context_skips_expired(tmp_path):
+    from datetime import datetime, timedelta, timezone
+    db = _session(tmp_path)
+    try:
+        past = datetime.now(timezone.utc) - timedelta(days=1)
+        db.add(
+            MemoryItem(
+                scope="task",
+                scope_id="77",
+                key="run:1:stage:plan",
+                content="stale",
+                importance=9,
+                expires_at=past,
+            )
+        )
+        db.add(
+            MemoryItem(
+                scope="task",
+                scope_id="77",
+                key="run:1:stage:research",
+                content="fresh",
+                importance=3,
+                expires_at=None,
+            )
+        )
+        db.commit()
+        items = load_context(db, 77)
+        assert [i.key for i in items] == ["run:1:stage:research"]
+    finally:
+        db.close()
