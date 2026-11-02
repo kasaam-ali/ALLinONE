@@ -177,7 +177,20 @@ def ready(db: Session = Depends(get_db)):
         db.execute(text("SELECT 1"))
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(503, f"db not ready: {exc}") from exc
-    return {"status": "ready", "db": "ok"}
+    from .security import SECRET
+    jwt_ok = len(SECRET or "") >= 32
+    body = {
+        "status": "ready" if jwt_ok else "degraded",
+        "db": "ok",
+        "jwt_secret_ok": jwt_ok,
+        "mock_llm": orchestrator.MOCK,
+    }
+    if not jwt_ok:
+        # Enforce JWT_SECRET length for production-ish readiness without breaking local mock demos
+        # unless GODMODE_REQUIRE_JWT_SECRET=1
+        if os.getenv("GODMODE_REQUIRE_JWT_SECRET", "0") == "1":
+            raise HTTPException(503, body)
+    return body
 
 
 # ---------- auth ----------
@@ -200,7 +213,13 @@ def refresh(body: RefreshIn, db: Session = Depends(get_db)):
     u = db.get(User, int(data["sub"]))
     if not u or not u.is_active:
         raise HTTPException(401, "User not found")
-    return {"access_token": make_token(u), "token_type": "bearer"}
+    # DB role is source of truth on refresh (ADR-004)
+    return {
+        "access_token": make_token(u),
+        "refresh_token": make_refresh_token(u),
+        "token_type": "bearer",
+        "user": user_out(u),
+    }
 
 
 @api.get("/auth/me")
@@ -447,5 +466,16 @@ def list_audit(entity_type: str | None = None, limit: int = 100, db: Session = D
         q = q.filter_by(entity_type=entity_type)
     return [audit_out(a) for a in q.order_by(AuditLog.id.desc()).limit(min(limit, 500))]
 
+
+
+
+@app.get("/health")
+def health_root():
+    return health()
+
+
+@app.get("/ready")
+def ready_root(db: Session = Depends(get_db)):
+    return ready(db)
 
 app.include_router(api)

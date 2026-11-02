@@ -5,6 +5,8 @@ from pathlib import Path
 DB = Path(__file__).resolve().parent.parent / "test_godmode.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{DB}"
 os.environ["GODMODE_MOCK_LLM"] = "1"
+os.environ["JWT_SECRET"] = "test-secret-at-least-32-bytes-long!!"
+os.environ["GODMODE_REQUIRE_JWT_SECRET"] = "0"
 if DB.exists():
     DB.unlink()
 

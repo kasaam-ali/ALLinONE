@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .db import get_db
 from .models import User
 
-SECRET = os.getenv("JWT_SECRET", "dev-only-change-me")
+SECRET = os.getenv("JWT_SECRET", "dev-only-change-me-use-32+chars!!")
 ALG = "HS256"
 bearer = HTTPBearer(auto_error=False)
 

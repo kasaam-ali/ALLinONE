@@ -64,8 +64,12 @@ def build_graph(db: Session):
             defs = db.query(AgentDefinition).filter_by(status="active").all()
             calls = run_phase_tools(stage, run.task.title, agents_from_definitions(defs))
         body = _mock_output(stage, run.task.title, calls)
-        art = Artifact(run_id=run.id, stage=stage, kind="report" if stage == "report" else "text",
+        kind_map = {"plan": "plan", "research": "research", "execute": "result", "verify": "verification", "report": "report"}
+        art = Artifact(run_id=run.id, stage=stage, kind=kind_map.get(stage, "other"),
                        body_text=body, mime="text/markdown")
+        if calls:
+            # Integrations stub tool_calls on the stage artifact body (SoT still Artifact row)
+            art.body_text = body + "\n\n<!-- tool_calls:" + str(calls) + " -->"
         db.add(art)
         db.flush()
         ev.status = "succeeded"
