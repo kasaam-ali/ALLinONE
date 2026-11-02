@@ -35,6 +35,15 @@ docker compose up --build
 - Web: http://localhost:3010
 - API: http://localhost:8010 (interactive docs at `/docs`)
 
+
+### Box note: dockerd without iptables
+
+On hosts where dockerd must run with `--iptables=false` (no iptables binary, so no bridge DNS or port publishing), add the host-network override. Host ports are unchanged (API 8010, web 3010):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.box.yml up --build -d
+```
+
 ## Quick start (no Docker)
 
 Requires Python 3.12+ and Node 20+.
@@ -44,6 +53,15 @@ Requires Python 3.12+ and Node 20+.
 ```
 
 This starts the API on port 8010 with a local SQLite database and the web app on port 3010.
+
+
+### Smoke test (API)
+
+```bash
+scripts/smoke-local.sh
+```
+
+Reuses an API already on 8010 (dev-local.sh or compose), otherwise starts one with SQLite and `GODMODE_MOCK_LLM=1`. Checks /health, /ready, login, and dashboard/summary. Web is a separate check: `cd apps/web && npx vitest run && npm run build`.
 
 ## Demo credentials
 

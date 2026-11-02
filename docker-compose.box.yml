@@ -1,0 +1,31 @@
+# Path: /workspace/godmode/repo/docker-compose.box.yml
+# What: override for hosts where dockerd runs with --iptables=false (no iptables binary),
+# so bridge DNS and port publishing are unavailable. All services use host networking.
+# Host ports stay the same: API 8010, web 3010, postgres 5432, redis 6379 (all 127.0.0.1).
+# Usage: docker compose -f docker-compose.yml -f docker-compose.box.yml up --build -d
+# LOCAL only. Not a production config.
+services:
+  postgres:
+    network_mode: host
+    ports: !reset []
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1"]
+  redis:
+    network_mode: host
+    ports: !reset []
+    command: ["redis-server", "--bind", "127.0.0.1"]
+  api:
+    network_mode: host
+    ports: !reset []
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-godmode}:${POSTGRES_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB:-godmode}
+      REDIS_URL: redis://127.0.0.1:6379/0
+    command: ["uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8010"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health')\""]
+  web:
+    network_mode: host
+    ports: !reset []
+    environment:
+      API_INTERNAL_URL: http://127.0.0.1:8010
+      PORT: "3010"
+      HOSTNAME: 127.0.0.1
