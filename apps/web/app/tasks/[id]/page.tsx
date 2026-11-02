@@ -20,12 +20,12 @@ function RunPanel({ runId }: { runId: string | number }) {
         const stage = r.current_stage || r.stage;
         return <><span className="mono">#{r.id}</span> <Badge value={r.status} /> {stage && <span className="muted">stage {stage}</span>}</>;
       }}</Resource></h2>
-        <Resource r={events} empty="No stage events yet.">
+        <Resource r={events} empty="Run started. Stage events appear as plan, research, execute, verify, and report complete.">
           {(rows) => <ul className="timeline">{rows.map((e) => <li key={e.id}><span className="muted">{fmt(e.created_at)}</span><span className="mono">{e.stage}</span><span>{e.message}</span>{e.status && <Badge value={e.status} />}</li>)}</ul>}
         </Resource>
       </div>
       <div className="panel"><h2>Artifacts</h2>
-        <Resource r={artifacts} empty="No artifacts yet.">
+        <Resource r={artifacts} empty="No artifacts yet. Plan and report files land here after stages finish.">
           {(rows) => <ul className="timeline">{rows.map((a) => <li key={a.id} style={{ gridTemplateColumns: "1fr auto" }}><span className="mono">{a.name || a.kind || `artifact ${a.id}`}</span><span className="muted">{fmt(a.created_at)}</span></li>)}</ul>}
         </Resource>
       </div>
@@ -74,18 +74,30 @@ export default function TaskDetail() {
       <Resource r={task} empty="Task not found.">
         {(t) => {
           const mine = (approvals.data || []).filter((a) => String(a.task_id) === String(t.id));
-          const canStart = !t.latest_run_id || ["draft", "queued", "failed", "rejected", "succeeded", "completed", "cancelled"].includes(String(t.status));
+          const pending = mine.filter((a) => a.status === "pending");
+          const active = ["queued", "running", "awaiting_approval"].includes(String(t.status));
+          const canStart = !active && (t.latest_run_id == null || ["draft", "failed", "rejected", "succeeded", "completed", "cancelled"].includes(String(t.status)));
+          const gateEmpty = mine.length === 0
+            ? (t.latest_run_id == null
+              ? "No gates yet. Start a run to open after_plan, then before_publish before the report ships."
+              : "Run is active. Waiting for after_plan or before_publish to open.")
+            : null;
           return (
             <>
               <div className="head"><span className="mono">#{t.id}</span><h1>{t.title || `Task ${t.id}`}</h1><Badge value={t.status} />
                 {canStart && <button className="sm" disabled={starting} onClick={start}>{starting ? "Starting..." : "Start run"}</button>}
               </div>
               {(t.description || t.prompt) && <div className="panel pad"><h2>Objective</h2><div>{t.description || t.prompt}</div></div>}
-              <div className="panel"><h2>Approval gates (after_plan, before_publish)</h2>
+              <div className="panel"><h2>Approval gates (after_plan → before_publish)</h2>
                 {err && <ErrorBox message={err} />}
-                {approvals.error ? <ErrorBox message={approvals.error} onRetry={approvals.reload} /> : mine.length === 0 ? <p className="muted" style={{ padding: "0 14px 12px" }}>No gates opened for this task.</p> : mine.map((a) => <Gate key={a.id} a={a} onDecide={decide} />)}
+                {approvals.error ? <ErrorBox message={approvals.error} onRetry={approvals.reload} />
+                  : gateEmpty ? <p className="muted" style={{ padding: "0 14px 12px" }}>{gateEmpty}</p>
+                  : <>
+                      {pending.length > 0 && <p className="muted" style={{ padding: "0 14px 8px" }}>{pending.length} gate{pending.length > 1 ? "s" : ""} waiting on a decision.</p>}
+                      {mine.map((a) => <Gate key={a.id} a={a} onDecide={decide} />)}
+                    </>}
               </div>
-              {t.latest_run_id != null ? <RunPanel runId={t.latest_run_id} /> : <div className="panel pad muted">No run started. Use Start run to create a Run and open gates.</div>}
+              {t.latest_run_id != null ? <RunPanel runId={t.latest_run_id} /> : <div className="panel pad muted">Draft task. Start run to create a Run, open after_plan, then before_publish.</div>}
             </>
           );
         }}

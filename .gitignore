@@ -11,3 +11,6 @@ dist/
 build/
 coverage/
 *.tsbuildinfo
+
+.env.local
+.env*.local
