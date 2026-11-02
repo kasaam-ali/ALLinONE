@@ -35,6 +35,6 @@ describe("fixtures", () => {
   });
   it("uses canonical workforce slugs", async () => {
     const { fx } = await import("@/lib/fixtures");
-    expect(fx.agents.map((a) => a.role)).toEqual(["planner", "researcher", "executor", "verifier", "reporter"]);
+    expect(fx.agents.map((a) => a.slug)).toEqual(["planner", "researcher", "executor", "verifier", "reporter"]);
   });
 });

@@ -1,15 +1,15 @@
-// Job: GODMODE Frontend. Purpose: Fixture data in Architect DTO shapes, used only when /api/v1 is unreachable or fixtures are forced.
+// Job: GODMODE Frontend. Purpose: Fixture data in live /api/v1 DTO shapes, used only when the API is unreachable or fixtures are forced.
 import type { Agent, Approval, Artifact, AuditEntry, DashboardSummary, Report, Run, StageEvent, Task } from "./types";
 
 const ago = (m: number) => new Date(Date.now() - m * 60000).toISOString();
 
 export const fx = {
   agents: [
-    { id: 1, name: "Planner", role: "planner", description: "Breaks objectives into staged plans", status: "idle" },
-    { id: 2, name: "Researcher", role: "researcher", description: "Gathers sources via browser and API tools", status: "running" },
-    { id: 3, name: "Executor", role: "executor", description: "Performs tool calls against connected systems", status: "running" },
-    { id: 4, name: "Verifier", role: "verifier", description: "Checks outputs against acceptance criteria", status: "idle" },
-    { id: 5, name: "Reporter", role: "reporter", description: "Writes the final report and artifacts", status: "paused" },
+    { id: 1, slug: "planner", name: "Atlas", role_prompt: "Break objectives into plans", tools_allowlist: ["http_fetch"], status: "active", version: 1 },
+    { id: 2, slug: "researcher", name: "Scout", role_prompt: "Gather context", tools_allowlist: ["http_fetch", "browser_stub"], status: "active", version: 1 },
+    { id: 3, slug: "executor", name: "Forge", role_prompt: "Execute steps with tools", tools_allowlist: ["http_fetch", "browser_stub", "webhook_inbound"], status: "active", version: 1 },
+    { id: 4, slug: "verifier", name: "Sentinel", role_prompt: "Verify outputs", tools_allowlist: ["http_fetch"], status: "active", version: 1 },
+    { id: 5, slug: "reporter", name: "Scribe", role_prompt: "Write reports", tools_allowlist: [], status: "active", version: 1 },
   ] as Agent[],
   tasks: [
     { id: 101, title: "Competitor pricing scan, Q4", prompt: "Collect public pricing for 5 competitors and summarize deltas.", status: "awaiting_approval", created_at: ago(14), latest_run_id: 501 },
@@ -27,11 +27,19 @@ export const fx = {
     { id: 9001, run_id: 501, task_id: 101, gate: "after_plan", status: "pending", created_at: ago(12) },
     { id: 9002, run_id: 503, task_id: 103, gate: "before_publish", status: "approved", created_at: ago(300) },
   ] as Approval[],
-  dashboard: { running: 2, awaiting_approval: 1, failed_24h: 1, agents_by_status: { running: 2, idle: 2, paused: 1 } } as DashboardSummary,
+  dashboard: {
+    tasks_total: 4,
+    tasks_by_status: { awaiting_approval: 1, running: 1, completed: 1, failed: 1 },
+    runs_by_status: { awaiting_approval: 1, running: 1, completed: 1 },
+    pending_approvals: 1,
+    agents_active: 5,
+    reports_total: 1,
+    recent_audit: [],
+  } as DashboardSummary,
   audit: [
-    { id: 1, actor: "planner", action: "run.stage", entity_type: "run", entity_id: 501, created_at: ago(13) },
-    { id: 2, actor: "system", action: "approval.opened", entity_type: "approval", entity_id: 9001, created_at: ago(12) },
-    { id: 3, actor: "admin@godmode.local", action: "approval.decide", entity_type: "approval", entity_id: 9002, created_at: ago(300), detail: { decision: "approve" } },
+    { id: 1, actor_user_id: 1, actor: "planner", action: "run.stage", entity_type: "run", entity_id: 501, created_at: ago(13) },
+    { id: 2, actor_user_id: null, actor: "system", action: "approval.opened", entity_type: "approval", entity_id: 9001, created_at: ago(12) },
+    { id: 3, actor_user_id: 1, actor: "admin@godmode.local", action: "approval.decide", entity_type: "approval", entity_id: 9002, created_at: ago(300), after_json: { decision: "approve" } },
   ] as AuditEntry[],
   reports: [{ id: 1, task_id: 103, title: "Weekly ops report", status: "published", created_at: ago(290) }] as Report[],
 };

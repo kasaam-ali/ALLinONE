@@ -8,6 +8,11 @@ import { Resource } from "@/components/Resource";
 import { Badge, fmt } from "@/components/State";
 import { Page, Row, StaggerBody, Ticker } from "@/components/Motion";
 
+function count(map: Record<string, number> | undefined, keys: string[]) {
+  if (!map) return 0;
+  return keys.reduce((n, k) => n + (map[k] ?? 0), 0);
+}
+
 export default function Dashboard() {
   const r = useApi(() => data.dashboard());
   const approvals = useApi(() => data.approvals());
@@ -17,9 +22,13 @@ export default function Dashboard() {
       <div className="head"><h1>Dashboard</h1><span className="sub">Live workforce state</span></div>
       <Resource r={r} empty="Dashboard summary returned no data.">
         {(s) => {
-          const agents = Object.values(s.agents_by_status || {}).reduce((a, b) => a + b, 0);
-          const max = Math.max(1, s.running, s.awaiting_approval, s.failed_24h, agents);
-          const kpis = [["Running", s.running, "ok"], ["Awaiting approval", s.awaiting_approval, "warn"], ["Failed (24h)", s.failed_24h, "bad"], ["Agents", agents, ""]] as const;
+          const running = count(s.runs_by_status, ["running"]) || count(s.tasks_by_status, ["running"]);
+          const awaiting = s.pending_approvals ?? count(s.tasks_by_status, ["awaiting_approval"]);
+          const failed = count(s.runs_by_status, ["failed"]) || count(s.tasks_by_status, ["failed"]);
+          const agents = s.agents_active ?? 0;
+          const statusMap = Object.keys(s.runs_by_status || {}).length ? s.runs_by_status : s.tasks_by_status;
+          const max = Math.max(1, running, awaiting, failed, agents);
+          const kpis = [["Running", running, "ok"], ["Awaiting approval", awaiting, "warn"], ["Failed", failed, "bad"], ["Agents active", agents, ""]] as const;
           return (
             <>
               <div className="kpis">
@@ -43,10 +52,13 @@ export default function Dashboard() {
                       ))}</StaggerBody></table>
                   )}
                 </div>
-                <div className="panel"><h2>Agents by status</h2>
-                  {Object.keys(s.agents_by_status || {}).length === 0 ? <p className="muted" style={{ padding: "0 14px 12px" }}>No agents reported.</p> : (
-                    <table><thead><tr><th>Status</th><th style={{ textAlign: "right" }}>Agents</th></tr></thead>
-                      <StaggerBody>{Object.entries(s.agents_by_status).map(([k, v]) => <Row key={k}><td><Badge value={k} /></td><td className="num" style={{ textAlign: "right" }}>{v}</td></Row>)}</StaggerBody></table>
+                <div className="panel"><h2>Runs by status</h2>
+                  {Object.keys(statusMap || {}).length === 0 && !agents ? <p className="muted" style={{ padding: "0 14px 12px" }}>No run status yet. {agents ? `${agents} agents active.` : ""}</p> : (
+                    <table><thead><tr><th>Status</th><th style={{ textAlign: "right" }}>Count</th></tr></thead>
+                      <StaggerBody>
+                        {Object.entries(statusMap || {}).map(([k, v]) => <Row key={k}><td><Badge value={k} /></td><td className="num" style={{ textAlign: "right" }}>{v}</td></Row>)}
+                        {agents > 0 && !Object.keys(statusMap || {}).length ? <Row key="agents"><td><Badge value="active" /></td><td className="num" style={{ textAlign: "right" }}>{agents}</td></Row> : null}
+                      </StaggerBody></table>
                   )}
                 </div>
               </div>
