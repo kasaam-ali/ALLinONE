@@ -42,6 +42,9 @@ services:
       # JWT_SECRET comes from .env (required >=32 chars; see .env.example)
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3010}
       GODMODE_MOCK_LLM: ${GODMODE_MOCK_LLM:-1}
+      GODMODE_ADMIN_EMAIL: ${GODMODE_ADMIN_EMAIL:-admin@godmode.local}
+      GODMODE_ADMIN_PASSWORD: ${GODMODE_ADMIN_PASSWORD:-change-me-admin-password}
+      # Alias for one release (seed accepts both)
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@godmode.local}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-change-me-admin-password}
     depends_on:

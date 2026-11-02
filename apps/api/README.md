@@ -32,6 +32,6 @@ cd apps/api
 
 ## Seed users
 
-- admin@godmode.local / godmode123 (override via env)
+- admin@godmode.local / godmode123 (override via GODMODE_ADMIN_* or alias SEED_ADMIN_*)
 - operator@godmode.local / godmode123
 - viewer@godmode.local / godmode123

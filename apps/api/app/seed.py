@@ -6,10 +6,24 @@ from .models import User, AgentDefinition
 from .security import hash_pw
 
 
+def env_first(*names: str, default: str) -> str:
+    """Prefer the first non-empty env var among names (GODMODE_* then SEED_* aliases)."""
+    for name in names:
+        raw = os.getenv(name)
+        if raw is not None and str(raw).strip() != "":
+            return str(raw).strip()
+    return default
+
+
 def seed(db: Session) -> None:
+    admin_email = env_first(
+        "GODMODE_ADMIN_EMAIL", "SEED_ADMIN_EMAIL", default="admin@godmode.local"
+    )
+    admin_password = env_first(
+        "GODMODE_ADMIN_PASSWORD", "SEED_ADMIN_PASSWORD", default="godmode123"
+    )
     defaults = [
-        (os.getenv("GODMODE_ADMIN_EMAIL", "admin@godmode.local"), "Admin", "admin",
-         os.getenv("GODMODE_ADMIN_PASSWORD", "godmode123")),
+        (admin_email, "Admin", "admin", admin_password),
         ("operator@godmode.local", "Operator", "operator", "godmode123"),
         ("viewer@godmode.local", "Viewer", "viewer", "godmode123"),
     ]
