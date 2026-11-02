@@ -1,4 +1,4 @@
-// Task detail: task header, latest Run with StageEvents and Artifacts, and Approval gates with decide actions.
+// Job: GODMODE Frontend. Purpose: Task detail with Run, StageEvent, Artifact, and Approval actions.
 "use client";
 import { useParams } from "next/navigation";
 import { useState } from "react";

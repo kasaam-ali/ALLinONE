@@ -1,4 +1,4 @@
-// Workforce: agents list from GET /agents.
+// Job: GODMODE Frontend. Purpose: Workforce page for /agents list and mutations.
 "use client";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";

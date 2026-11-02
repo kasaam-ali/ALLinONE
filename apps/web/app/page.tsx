@@ -1,4 +1,4 @@
-// Dashboard: live Command Center summary from GET /dashboard/summary.
+// Job: GODMODE Frontend. Purpose: Command Center dashboard page calling GET /dashboard/summary.
 "use client";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";

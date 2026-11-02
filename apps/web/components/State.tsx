@@ -1,4 +1,4 @@
-// Shared UI states: loading, error, and empty placeholders so pages never show fake data.
+// Job: GODMODE Frontend. Purpose: Shared loading and error UI helpers for empty or failed API calls.
 export function Loading() { return <p className="muted" role="status">Loading...</p>; }
 export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (

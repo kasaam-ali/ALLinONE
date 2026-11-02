@@ -1,4 +1,4 @@
-// Next.js config: standalone output and a dev/prod proxy from /api/v1 to the backend.
+// Job: GODMODE Frontend. Purpose: Next.js config including optional API rewrites for local MVP.
 const target = process.env.API_PROXY_TARGET || "http://localhost:8000/api/v1";
 module.exports = {
   output: "standalone",

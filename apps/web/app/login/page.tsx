@@ -1,4 +1,4 @@
-// Login page: POST /auth/login with email and password, stores tokens, then opens the dashboard.
+// Job: GODMODE Frontend. Purpose: Login page for POST /auth/login and token storage.
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";

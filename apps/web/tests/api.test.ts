@@ -1,4 +1,4 @@
-// API client tests: verify contract paths and error handling with a mocked fetch.
+// Job: GODMODE Frontend. Purpose: Vitest coverage for the API client path contract.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, paths, tokens } from "@/lib/api";
 

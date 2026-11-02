@@ -1,4 +1,4 @@
-// Activity and audit: read-only feed from GET /audit.
+// Job: GODMODE Frontend. Purpose: Activity and audit feed for GET /audit.
 "use client";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";

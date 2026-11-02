@@ -1,4 +1,4 @@
-// Reports: list from GET /reports.
+// Job: GODMODE Frontend. Purpose: Reports list page for GET /reports.
 "use client";
 import Link from "next/link";
 import { api } from "@/lib/api";

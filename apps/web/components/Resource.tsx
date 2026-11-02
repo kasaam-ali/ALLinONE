@@ -1,4 +1,4 @@
-// Resource wrapper: renders loading, error, or empty state before handing data to children.
+// Job: GODMODE Frontend. Purpose: Reusable resource wrapper for loading, error, and empty states.
 "use client";
 import type { ReactNode } from "react";
 import { Empty, ErrorBox, Loading } from "./State";

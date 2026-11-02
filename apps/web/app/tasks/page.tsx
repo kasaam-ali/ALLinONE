@@ -1,4 +1,4 @@
-// Tasks list: all tasks from GET /tasks with links to detail.
+// Job: GODMODE Frontend. Purpose: Tasks list page for GET /tasks.
 "use client";
 import Link from "next/link";
 import { api } from "@/lib/api";

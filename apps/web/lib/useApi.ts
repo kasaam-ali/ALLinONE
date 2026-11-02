@@ -1,4 +1,4 @@
-// React hook: loads an API resource on mount and exposes loading, error, and reload.
+// Job: GODMODE Frontend. Purpose: React hook that loads an API resource with loading and error state.
 "use client";
 import { useCallback, useEffect, useState } from "react";
 

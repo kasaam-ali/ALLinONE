@@ -1,4 +1,4 @@
-// Domain types: frontend view of the /api/v1 contract (Task, Run, StageEvent, Artifact, Approval).
+// Job: GODMODE Frontend. Purpose: Frontend TypeScript types for the Architect domain model.
 export type Role = "viewer" | "operator" | "admin";
 export type Gate = "after_plan" | "before_publish";
 export type ApprovalDecision = "approve" | "reject";
