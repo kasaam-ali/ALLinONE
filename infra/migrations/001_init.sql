@@ -159,7 +159,7 @@ CREATE TABLE approvals (
         'after_plan', 'before_publish'
     )),
     CONSTRAINT approvals_status_check CHECK (status IN (
-        'pending', 'approved', 'rejected'
+        'pending', 'approved', 'rejected', 'cancelled'
     ))
 );
 
