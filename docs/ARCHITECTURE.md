@@ -96,7 +96,7 @@ MemoryItem (scoped: global | user | task | agent) - soft refs via scope+scope_id
 
 ---
 
-## Live API DTOs (Backend SoT — Frontend adapted)
+## Live API DTOs (Backend SoT, Frontend adapted)
 
 Synced 2026-11-03 to live `apps/api` serializers. Frontend already adapted. **Do not invent old KPI fields.**
 
