@@ -8,3 +8,6 @@ Purpose: the tool interface and registry for GODMODE agents. Every tool here is 
 - `webhook_inbound.py`: in-memory inbound webhook stub plus the /integrations router.
 
 See /workspace/godmode/handoffs/integrations.md.
+
+- `runtime_agents.py`: maps AgentDefinition rows to orchestrator `{name, role, tools_allowlist}` dicts.
+- `stage_tools.py`: `run_phase_tools(phase, prompt, agents)` for research/execute hooks. Agentic should call this from graph nodes.

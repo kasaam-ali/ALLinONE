@@ -1,3 +1,5 @@
-# components
+# Web components
 
-Shared UI building blocks. `State.tsx` holds loading, error, empty, and badge components. `Resource.tsx` wraps a `useApi` result and renders the right state.
+Path: `/workspace/godmode/repo/apps/web/components`
+
+Shared React components for the Command Center UI. Owned by Frontend.

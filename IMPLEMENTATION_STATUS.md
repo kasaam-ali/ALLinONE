@@ -1,84 +1,47 @@
 # GODMODE IMPLEMENTATION_STATUS
 
 Owned by: **GODMODE Architect** (honesty bar)  
-Updated: 2026-11-03 00:13 Asia/Karachi  
-Deadline: **7:00 AM Asia/Karachi today**
+Updated: 2026-11-03 00:16 Asia/Karachi  
+Deadline: **7:00 AM Asia/Karachi = GitHub-pushable MVP**
+
+## STATUS: RED
+CTO night review accepted. Backend hard rewrite ordered. **Stay RED until `/api/v1` contract + ORM=`001_init` + pytest green.**
 
 ## Truth
 | Check | Value |
 |-------|-------|
 | Working end-to-end | **NO** |
-| Repo path | `/workspace/godmode/repo` (box; GitHub URL later) |
-| API evidence | CTO reports `apps/api` pytest **4 passed** (E0). Architect has not re-run this turn. |
-| UI evidence | `apps/web` building; not proven E2E |
-| Prod deploy | none (needs Kasaam yes) |
+| Repo | `/workspace/godmode/repo` |
+| pytest | not green (CTO: Backend ORM lag; last report 2 fail). Architect not re-running this stamp. |
+| Compose ports target | API **8010**, Web **3010** |
+| Prod deploy | none |
 
-**Rule:** status `done` only with runnable evidence. No fake green.
+**Rule:** no fake green. `done` needs evidence.
 
-Status vocabulary: `todo` | `stub` | `wip` | `done` | `blocked` | `cut`
-
-## Canonical contract (CTO + Architect SoT)
-| Item | Locked value |
-|------|----------------|
-| API prefix | `/api/v1` |
-| Approvals | `POST /approvals/{id}/decide` `{decision, note?}` |
-| Auth | `/auth/login` `/auth/refresh` `/auth/me` |
-| Health | `/health` `/ready` |
-| Workforce | `/agents` |
-| Memory | `/memory` |
-| Dashboard | `/dashboard/summary` |
-| Domain | Task, Run, StageEvent, Artifact, Approval |
-| Gates | `after_plan` + `before_publish` only |
-| Docs SoT | `handoffs/ARCHITECTURE.md` (mirrored `repo/docs/ARCHITECTURE.md`) |
-| ADRs | `handoffs/adrs/001.md`-`008.md` |
-
-## Standing rules (Kasaam via CTO)
-- Full English; **no em-dash characters**
-- README in every folder; source file header = job + purpose
-- `.gitignore` excludes `.venv/`, `node_modules/`, `*.db`
-- Prepare GitHub-ready tree first; remote URL later
-
-## Monorepo slices
-| Slice | Status | Owner | Evidence |
-|-------|--------|-------|----------|
-| Architect SoT + ADRs | done | Architect | ARCHITECTURE + adrs; READMEs; em-dash scrubbed on Architect docs |
-| `apps/api` | wip | Backend (+ Agentic merge) | Exists; E0 pytest 4 passed (CTO); rewrite to canonical names/gates in progress |
-| `apps/web` | wip | Frontend | Command Center in progress; aligning `lib/api.ts` |
-| `packages/shared` | stub | Backend + Frontend | directory present |
-| `infra/` migrations | wip | Database | migrations present; must map to Task/Run/StageEvent/Artifact/Approval |
-| LangGraph mock | wip | Agentic AI | must match after_plan + before_publish |
-| Docker Compose | todo | DevOps | - |
-| QA smoke beyond E0 | todo | QA | - |
-
-## Progress checklist
-- [x] Stack + ARCHITECTURE locked
-- [x] ADRs 001-008
-- [x] CTO canonical contract published in team channel
-- [x] `apps/api` exists (not empty); E0 tests claimed
-- [ ] API fully matches Architect names + gates (Backend rewrite)
-- [ ] Agentic graph gate order fixed
-- [ ] DB primary API names aligned (SQL map OK)
-- [ ] Frontend Command Center against `/api/v1`
-- [ ] Root + all-folder READMEs + headers + gitignore verified repo-wide
-- [ ] `docker compose up` proven
-- [ ] Honest E2E path with mock LLM
+## Pushable MVP checklist (CTO hard deadline)
+| Item | Status |
+|------|--------|
+| ORM matches `infra/migrations/001_init.sql` (Run/StageEvent/Artifact, not Plan/Step) | **open** (Backend first) |
+| `/api/v1` + decide + agents/memory/dashboard | **open** |
+| Two gates after_plan + before_publish | **remediated in orchestrator** (keep under test) |
+| Command Center on contract | **wip** Frontend |
+| compose 8010/3010 | **todo** DevOps |
+| READMEs / headers / no em-dashes | **partial** (slices reporting clean) |
+| local git commits | **todo** |
+| pytest green | **open** |
 
 ## Architect gaps
-| ID | Status | Notes |
-|----|--------|-------|
-| G1 gate placement | **remediated on box** | `apps/api/app/orchestrator.py` now plan→after_plan→…→before_publish→report |
-| G2 schema/API names | **partial** | `runs`/`stage`-style in migration + models Run/StageEvent/Approval/Task; `before_execute` still in SQL CHECK (unused); watch Artifact + /api/v1 decide coverage |
-| Next | watch | File gap ADR only if miss again after their next land |
-| G3 API routes | **open** | `main.py` still `/workforce`, approve/reject, `/memories`, `/reports/summary`; need `/api/v1` + decide + agents + memory + dashboard/summary |
+| ID | Status |
+|----|--------|
+| G1 gates | remediated in `orchestrator.py` |
+| G2 DB schema | landed in migrations; ORM must match |
+| G3 API routes | open until Backend finishes `/api/v1` |
 
-## Blockers
-| Blocker | Mitigation |
-|---------|------------|
-| CloudAgent usage | Box build; GitHub push later |
-| Gate/API naming drift | Remediation ordered (see Architect gaps) |
+## SoT
+`handoffs/ARCHITECTURE.md`, `handoffs/adrs/001-008`, mirrored under `repo/docs/`.
 
-## Bugs
-_None filed as code bugs this stamp._
-
-## How to run
-TBD after Backend/DevOps publish proven commands in root README.
+## Executor integration note (2026-11-03 00:20 PKT)
+- Verified green at 00:15 PKT: API pytest 7 passed (health, auth guard, create task, approval approve to report, audit, register, workforce create) on the ORM schema (users, roles, agents, tasks, plans, steps, approvals, audit_logs, memories, reports). Web `next build` succeeded against those routes.
+- After 00:15 PKT, concurrent agents began migrating to the Architect `/api/v1` contract (agent_definitions, runs, stage_events, artifacts). At 00:20 PKT the tree is RED: `app/main.py` imports `Agent` which `models.py` no longer exports, so pytest fails to collect and the API does not start. Web lib targets `/api/v1/...` routes (`/agents`, `/runs`, `/approvals/{id}/decide`, `/dashboard/summary`, `/auth/refresh`) that the current backend does not expose. The snapshot commit c205e54 is also red.
+- Docker is not installed on the box, so `docker compose up --build` is untested. Compose no longer mounts `infra/migrations` into Postgres init, because the API creates its schema at startup; the Architect SQL in 001_init.sql does not match the ORM.
+- Port 8000 on the box is taken by an unrelated service. Use another port for local smoke tests.

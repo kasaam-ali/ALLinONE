@@ -13,7 +13,7 @@ describe("ui", () => {
     expect(screen.getByPlaceholderText(/email/i)).toBeTruthy();
   });
   it("shell nav lists all sections", () => {
-    expect(NAV.map((n) => n[1])).toEqual(["Dashboard", "Tasks", "Workforce", "Activity / Audit", "Reports"]);
+    expect(NAV.map((n) => n[1])).toEqual(["Dashboard", "Tasks", "Workforce", "Activity", "Reports"]);
   });
   it("shows an error state", () => {
     render(<ErrorBox message="API unreachable" />);

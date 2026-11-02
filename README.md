@@ -27,12 +27,13 @@ This repository is the MVP. It runs end to end with a mock LLM, so no API keys a
 ## Quick start (Docker)
 
 ```bash
-cp .env.example .env        # optional, defaults work for local use
+cp .env.example .env
+# Set JWT_SECRET to >=32 chars (openssl rand -hex 32) and POSTGRES_PASSWORD
 docker compose up --build
 ```
 
-- Web: http://localhost:3000
-- API: http://localhost:8000 (interactive docs at `/docs`)
+- Web: http://localhost:3010
+- API: http://localhost:8010 (interactive docs at `/docs`)
 
 ## Quick start (no Docker)
 
@@ -42,7 +43,7 @@ Requires Python 3.12+ and Node 20+.
 ./scripts/dev-local.sh
 ```
 
-This starts the API on port 8000 with a local SQLite database and the web app on port 3000.
+This starts the API on port 8010 with a local SQLite database and the web app on port 3010.
 
 ## Demo credentials
 

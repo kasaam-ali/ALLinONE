@@ -5,11 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { tokens } from "@/lib/api";
 
-const NAV: [string, string][] = [
+export const NAV: [string, string][] = [
   ["/", "Dashboard"],
   ["/tasks", "Tasks"],
   ["/workforce", "Workforce"],
-  ["/audit", "Activity"],
+  ["/activity", "Activity"],
   ["/reports", "Reports"],
 ];
 

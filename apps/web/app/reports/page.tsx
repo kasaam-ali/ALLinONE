@@ -1,25 +1,26 @@
-// Job: GODMODE Frontend. Purpose: Reports list page backed by GET /api/v1/reports.
+// Reports: list from GET /reports.
 "use client";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import type { Report } from "@/lib/types";
+import { Resource } from "@/components/Resource";
+import { Badge, fmt } from "@/components/State";
 
 export default function Reports() {
-  const { data, error, loading } = useApi<Report[]>(() => api.reports(), []);
+  const r = useApi(() => api.reports());
   return (
     <>
       <h1>Reports</h1>
-      {error && <p className="err">{error}</p>}
-      {loading && <p className="muted">Loading...</p>}
-      {data?.map((r) => (
-        <div className="card" key={r.id}>
-          <h2>{r.task_id != null ? <Link href={`/tasks/${r.task_id}`}>{r.title || `Report ${r.id}`}</Link> : (r.title || `Report ${r.id}`)}</h2>
-          <p className="muted">status: {r.status || "-"}</p>
-          <pre>{(r as Report & { body?: string; body_md?: string }).body_md || (r as Report & { body?: string }).body || ""}</pre>
-        </div>
-      ))}
-      {data?.length === 0 && <p className="muted">No reports yet.</p>}
+      <div className="card">
+        <Resource r={r} empty="No reports yet.">
+          {(rows) => (
+            <table><thead><tr><th>Title</th><th>Task</th><th>Status</th><th>Created</th></tr></thead>
+              <tbody>{rows.map((x) => (
+                <tr key={x.id}><td>{x.title || `Report ${x.id}`}</td><td>{x.task_id != null ? <Link href={`/tasks/${x.task_id}`}>{x.task_id}</Link> : "-"}</td><td>{x.status && <Badge value={x.status} />}</td><td className="muted">{fmt(x.created_at)}</td></tr>
+              ))}</tbody></table>
+          )}
+        </Resource>
+      </div>
     </>
   );
 }

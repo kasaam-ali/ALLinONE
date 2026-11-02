@@ -1,6 +1,6 @@
 # GODMODE Local Runbook
 
-LOCAL ONLY. No production, Railway, or Vercel deploy without Kasaam's approval via CTO.
+LOCAL ONLY. Compose binds ports to 127.0.0.1 only. No production, Railway, or Vercel deploy without Kasaam's approval via CTO.
 
 ## Prerequisites
 - Docker with the Compose plugin (`docker compose version`).
@@ -15,9 +15,9 @@ docker compose ps
 ```
 
 ## URLs
-- Web: http://localhost:3000
-- API health: http://localhost:8000/health
-- API docs (FastAPI): http://localhost:8000/docs
+- Web: http://localhost:3010
+- API health: http://localhost:8010/health
+- API docs (FastAPI): http://localhost:8010/docs
 
 ## Seed admin (dev defaults, not secrets)
 - Email: value of `SEED_ADMIN_EMAIL` (default `admin@godmode.local`)
@@ -43,5 +43,9 @@ PYTHONPATH=. pytest -q
 - JWT_SECRET / InsecureKeyLengthWarning: set `JWT_SECRET` to at least 32 characters in `.env` (see `.env.example`). API refuses to start if shorter.
 - CORS error in browser: add the exact origin (scheme+host+port) to `CORS_ORIGINS` in `.env`, then `docker compose up -d api`. `*` is ignored.
 - `POSTGRES_PASSWORD` required error: you did not create `.env`.
-- Port in use: stop the other process on 3000/8000/5432/6379.
+- Port in use: stop the other process on 3010/8010/5432/6379.
 - Schema: the API runs `create_all` on startup. `infra/migrations/001_init.sql` is the canonical reference and is not auto-applied.
+
+## Host ports
+
+Host ports 8000 and 3000 are used by other apps on this box. GODMODE maps API to 127.0.0.1:8010 (container 8000) and web to 127.0.0.1:3010 (container 3000). Postgres 5432 and Redis 6379 bind to 127.0.0.1 only. Inside the compose network the web container reaches the API at http://api:8000.

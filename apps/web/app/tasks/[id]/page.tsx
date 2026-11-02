@@ -1,81 +1,78 @@
-// Job: GODMODE Frontend. Purpose: Task detail with Run/StageEvent/Artifact/Approval placeholders via /api/v1.
+// Task detail: task header, latest Run with StageEvents and Artifacts, and Approval gates with decide actions.
 "use client";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import type { Approval, Artifact, Report, Run, StageEvent, Task } from "@/lib/types";
+import { Resource } from "@/components/Resource";
+import { Badge, ErrorBox, fmt } from "@/components/State";
+import type { ApprovalDecision } from "@/lib/types";
+
+function RunPanel({ runId }: { runId: string | number }) {
+  const run = useApi(() => api.run(runId), [runId]);
+  const events = useApi(() => api.runEvents(runId), [runId]);
+  const artifacts = useApi(() => api.runArtifacts(runId), [runId]);
+  return (
+    <>
+      <div className="card"><h2>Latest run</h2>
+        <Resource r={run}>{(r) => <p>Run {r.id} <Badge value={r.status} /> {r.stage && <span className="muted">stage: {r.stage}</span>}</p>}</Resource>
+      </div>
+      <div className="card"><h2>Plan and stage events</h2>
+        <Resource r={events} empty="No stage events yet.">
+          {(rows) => (
+            <table><thead><tr><th>Time</th><th>Stage</th><th>Status</th><th>Message</th></tr></thead>
+              <tbody>{rows.map((e) => <tr key={e.id}><td className="muted">{fmt(e.created_at)}</td><td>{e.stage}</td><td>{e.status && <Badge value={e.status} />}</td><td>{e.message}</td></tr>)}</tbody></table>
+          )}
+        </Resource>
+      </div>
+      <div className="card"><h2>Artifacts</h2>
+        <Resource r={artifacts} empty="No artifacts yet.">
+          {(rows) => <ul>{rows.map((a) => <li key={a.id}>{a.name || a.kind || `Artifact ${a.id}`} <span className="muted">{fmt(a.created_at)}</span></li>)}</ul>}
+        </Resource>
+      </div>
+    </>
+  );
+}
 
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>();
-  const task = useApi<Task>(() => api.task(id), [id]);
-  const approvals = useApi<Approval[]>(() => api.approvals(), [id]);
-  const reports = useApi<Report[]>(() => api.reports(), [id]);
-  const runId = task.data?.latest_run_id;
-  const run = useApi<Run | null>(() => (runId != null ? api.run(runId) : Promise.resolve(null)), [runId]);
-  const events = useApi<StageEvent[]>(() => (runId != null ? api.runEvents(runId) : Promise.resolve([])), [runId]);
-  const artifacts = useApi<Artifact[]>(() => (runId != null ? api.runArtifacts(runId) : Promise.resolve([])), [runId]);
+  const task = useApi(() => api.task(id), [id]);
+  const approvals = useApi(() => api.approvals(), []);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-
-  async function decide(aid: string | number, decision: "approve" | "reject") {
+  async function decide(aid: string | number, d: ApprovalDecision) {
     setBusy(true); setErr("");
-    try {
-      await api.decide(aid, decision);
-      task.reload(); approvals.reload(); run.reload(); events.reload(); artifacts.reload(); reports.reload();
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Decision failed");
-    } finally { setBusy(false); }
+    try { await api.decide(aid, d); approvals.reload(); task.reload(); }
+    catch (e) { setErr((e as Error).message); }
+    finally { setBusy(false); }
   }
-
-  if (task.error) return <p className="err">{task.error}</p>;
-  if (!task.data) return <p className="muted">Loading task...</p>;
-  const t = task.data;
-  const relatedApprovals = (approvals.data || []).filter((a) => a.task_id == t.id || (runId != null && a.run_id == runId));
-  const report = (reports.data || []).find((r) => r.task_id == t.id);
-
   return (
-    <>
-      <h1>#{t.id} {t.title || "Task"} <span className={`badge ${t.status}`}>{t.status}</span></h1>
-      {err && <p className="err">{err}</p>}
-      <div className="card"><h2>Objective</h2><p>{t.prompt || t.title || "No description."}</p></div>
-
-      <div className="card"><h2>Run</h2>
-        {run.error && <p className="err">{run.error}</p>}
-        {!runId && <p className="muted">No Run linked yet (latest_run_id missing).</p>}
-        {run.data && <p>Run #{run.data.id} <span className={`badge ${run.data.status}`}>{run.data.status}</span> stage: {run.data.stage || "-"}</p>}
-      </div>
-
-      <div className="card"><h2>Stage events</h2>
-        {events.error && <p className="err">{events.error}</p>}
-        <table><thead><tr><th>Stage</th><th>Status</th><th>Message</th><th>When</th></tr></thead>
-          <tbody>{(events.data || []).map((e) => (
-            <tr key={e.id}><td>{e.stage}</td><td><span className={`badge ${e.status || ""}`}>{e.status}</span></td><td className="muted">{e.message}</td><td className="muted">{e.created_at}</td></tr>
-          ))}</tbody></table>
-        {(events.data || []).length === 0 && <p className="muted">No StageEvent rows yet (plan/research/execute/verify/report placeholders).</p>}
-      </div>
-
-      <div className="card"><h2>Artifacts</h2>
-        {(artifacts.data || []).length === 0 && <p className="muted">No Artifact rows yet.</p>}
-        <ul>{(artifacts.data || []).map((a) => <li key={a.id}>{a.kind || "artifact"} {a.name || `#${a.id}`}</li>)}</ul>
-      </div>
-
-      <div className="card"><h2>Approvals</h2>
-        {relatedApprovals.map((a) => (
-          <div key={a.id} style={{ marginBottom: 12 }}>
-            <p>#{a.id} gate <span className="badge pending">{a.gate}</span> <span className={`badge ${a.status}`}>{a.status}</span></p>
-            {a.status === "pending" && (
-              <div className="row">
-                <button disabled={busy} onClick={() => decide(a.id, "approve")}>Approve</button>
-                <button className="bad" disabled={busy} onClick={() => decide(a.id, "reject")}>Reject</button>
-              </div>
-            )}
-          </div>
-        ))}
-        {relatedApprovals.length === 0 && <p className="muted">No Approval records for this task/run (gates: after_plan, before_publish).</p>}
-      </div>
-
-      {report && <div className="card"><h2>Report</h2><pre>{(report as Report & { body?: string }).body || report.title || JSON.stringify(report, null, 2)}</pre></div>}
-    </>
+    <Resource r={task} empty="Task not found.">
+      {(t) => {
+        const mine = (approvals.data || []).filter((a) => String(a.task_id) === String(t.id));
+        return (
+          <>
+            <h1>{t.title || `Task ${t.id}`} <Badge value={t.status} /></h1>
+            {t.prompt && <div className="card"><h2>Objective</h2><p>{t.prompt}</p></div>}
+            {t.latest_run_id != null
+              ? <RunPanel runId={t.latest_run_id} />
+              : <div className="card placeholder"><h2>Run</h2><p>No run started yet. Plan, stage events, and artifacts appear here once a run exists.</p></div>}
+            <div className="card"><h2>Approvals (after_plan, before_publish)</h2>
+              {err && <ErrorBox message={err} />}
+              {approvals.error ? <ErrorBox message={approvals.error} onRetry={approvals.reload} /> : mine.length === 0 ? <p className="muted">No approvals for this task.</p> : (
+                <table><thead><tr><th>Gate</th><th>Status</th><th>Created</th><th /></tr></thead>
+                  <tbody>{mine.map((a) => (
+                    <tr key={a.id}><td>{a.gate}</td><td><Badge value={a.status} /></td><td className="muted">{fmt(a.created_at)}</td>
+                      <td>{a.status === "pending" && <div className="row">
+                        <button disabled={busy} onClick={() => decide(a.id, "approve")}>Approve</button>
+                        <button className="bad" disabled={busy} onClick={() => decide(a.id, "reject")}>Reject</button>
+                      </div>}</td></tr>
+                  ))}</tbody></table>
+              )}
+            </div>
+          </>
+        );
+      }}
+    </Resource>
   );
 }

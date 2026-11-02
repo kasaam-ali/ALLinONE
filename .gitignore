@@ -1,10 +1,19 @@
+# Path: /workspace/godmode/repo/.gitignore
+# Secrets and local artifacts. Never commit .env or keys.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
 *.db
-.env
+*.sqlite3
 node_modules/
 .next/
 *.tsbuildinfo
-next-env.d.ts
-.pytest_cache/
+coverage/
+dist/
+build/

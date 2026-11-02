@@ -12,7 +12,7 @@ Path: `/workspace/godmode/repo/docs/AUTH_HARDENING_CHECKLIST.md`. Scope: local D
 - [ ] TODO: rotate `JWT_SECRET` procedure documented for prod.
 
 ## CORS
-- [x] `CORS_ORIGINS` is an explicit comma-separated allowlist (default `http://localhost:3000`).
+- [x] `CORS_ORIGINS` is an explicit comma-separated allowlist (default `http://localhost:3010`).
 - [x] `*` entries are ignored by the API (`apps/api/app/main.py`), because `allow_credentials=True` must never pair with a wildcard.
 - [ ] TODO: narrow `allow_methods`/`allow_headers` from `*` to what the web app uses.
 

@@ -1,41 +1,77 @@
-# Local stack: Postgres, Redis, FastAPI API, and Next.js web. Run: docker compose up --build
+# Path: /workspace/godmode/repo/docker-compose.yml
+# What: local stack (postgres, redis, api, web). LOCAL only. No prod/Railway/Vercel without Kasaam approval (via CTO).
+name: godmode
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-godmode}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-godmode}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-godmode}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-godmode}"]
-      interval: 3s
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
       retries: 20
-    ports: ["5432:5432"]
+
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   api:
     build: ./apps/api
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-godmode}:${POSTGRES_PASSWORD:-godmode}@postgres:5432/${POSTGRES_DB:-godmode}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-godmode}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-godmode}
       REDIS_URL: redis://redis:6379/0
-      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-please-32-bytes-min}
+      GODMODE_ENV: ${GODMODE_ENV:-development}
+      # JWT_SECRET comes from .env (required >=32 chars; see .env.example)
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3010}
       GODMODE_MOCK_LLM: ${GODMODE_MOCK_LLM:-1}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@godmode.local}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-godmode123}
-      CORS_ORIGINS: http://localhost:3000
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-change-me-admin-password}
     depends_on:
-      postgres: { condition: service_healthy }
-      redis: { condition: service_started }
-    ports: ["8000:8000"]
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8010:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
   web:
     build:
       context: ./apps/web
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
-    depends_on: [api]
-    ports: ["3000:3000"]
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8010}
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8010}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3010:3000"
+
 volumes:
   pgdata:

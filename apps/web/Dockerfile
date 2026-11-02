@@ -4,8 +4,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG API_PROXY_TARGET=http://api:8000/api/v1
+ENV API_PROXY_TARGET=$API_PROXY_TARGET
 RUN npm run build
 FROM node:20-alpine
 WORKDIR /app

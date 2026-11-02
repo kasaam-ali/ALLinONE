@@ -1,5 +1,5 @@
-"""Tests that start/execute path honors Agent.tools_allowlist via stub invoke only."""
-from app import orchestrator
+"""Tests that research/execute stage helpers honor tools_allowlist (stub-only)."""
+from app.tools import run_phase_tools
 
 
 def test_execute_runs_allowlisted_stubs_only():
@@ -7,8 +7,9 @@ def test_execute_runs_allowlisted_stubs_only():
         {"name": "Scout", "role": "research", "tools_allowlist": ["http_fetch"]},
         {"name": "Forge", "role": "execute", "tools_allowlist": ["http_fetch", "browser_stub"]},
     ]
-    state = orchestrator.run_full("ship stub wiring", agents)
-    calls = state["outputs"].get("tool_calls") or []
+    research = run_phase_tools("research", "ship stub wiring", agents)
+    execute = run_phase_tools("execute", "ship stub wiring", agents)
+    calls = research + execute
     assert calls, "expected stub tool_calls on execute path"
     assert all(c.get("stub") is True for c in calls)
     tools = {c["tool"] for c in calls}
@@ -21,6 +22,5 @@ def test_empty_allowlist_skips_tools():
         {"name": "Scout", "role": "research", "tools_allowlist": []},
         {"name": "Forge", "role": "execute", "tools_allowlist": []},
     ]
-    state = orchestrator.run_full("no tools", agents)
-    calls = state["outputs"].get("tool_calls") or []
-    assert calls == []
+    assert run_phase_tools("research", "no tools", agents) == []
+    assert run_phase_tools("execute", "no tools", agents) == []
