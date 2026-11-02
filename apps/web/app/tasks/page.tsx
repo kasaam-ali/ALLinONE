@@ -1,26 +1,27 @@
-// Job: GODMODE Frontend. Purpose: Tasks list page for GET /tasks.
+// Job: GODMODE Frontend. Purpose: Tasks list for GET /tasks with staggered rows.
 "use client";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { Badge, fmt } from "@/components/State";
+import { data } from "@/lib/data";
 import { useApi } from "@/lib/useApi";
 import { Resource } from "@/components/Resource";
-import { Badge, fmt } from "@/components/State";
+import { Page, Row, StaggerBody } from "@/components/Motion";
 
 export default function Tasks() {
-  const r = useApi(() => api.tasks());
+  const r = useApi(() => data.tasks());
   return (
-    <>
-      <h1>Tasks</h1>
-      <div className="card">
-        <Resource r={r} empty="No tasks yet.">
+    <Page>
+      <div className="head"><h1>Tasks</h1>{r.data && <span className="sub">{r.data.length}</span>}</div>
+      <div className="panel">
+        <Resource r={r} empty="No tasks yet. Tasks appear after POST /tasks.">
           {(rows) => (
             <table><thead><tr><th>ID</th><th>Title</th><th>Status</th><th>Created</th></tr></thead>
-              <tbody>{rows.map((t) => (
-                <tr key={t.id}><td>{t.id}</td><td><Link href={`/tasks/${t.id}`}>{t.title || t.prompt || "Untitled"}</Link></td><td><Badge value={t.status} /></td><td className="muted">{fmt(t.created_at)}</td></tr>
-              ))}</tbody></table>
+              <StaggerBody>{rows.map((x) => (
+                <Row key={x.id}><td className="id">{x.id}</td><td><Link href={`/tasks/${x.id}`}>{x.title || x.prompt || "Untitled"}</Link></td><td><Badge value={x.status} /></td><td className="muted">{fmt(x.created_at)}</td></Row>
+              ))}</StaggerBody></table>
           )}
         </Resource>
       </div>
-    </>
+    </Page>
   );
 }

@@ -1,4 +1,4 @@
-// Vitest config: jsdom environment and the @ path alias used by the app.
+// Job: GODMODE Frontend. Purpose: Vitest config for unit and UI smoke tests.
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "node:path";

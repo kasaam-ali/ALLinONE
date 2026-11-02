@@ -1,23 +1,26 @@
-// Job: GODMODE Frontend. Purpose: Workforce page for /agents list and mutations.
+// Job: GODMODE Frontend. Purpose: Workforce page for GET /agents.
 "use client";
-import { api } from "@/lib/api";
+import { Badge } from "@/components/State";
+import { data } from "@/lib/data";
 import { useApi } from "@/lib/useApi";
 import { Resource } from "@/components/Resource";
-import { Badge } from "@/components/State";
+import { Page, Row, StaggerBody } from "@/components/Motion";
 
 export default function Workforce() {
-  const r = useApi(() => api.agents());
+  const r = useApi(() => data.agents());
   return (
-    <>
-      <h1>Workforce</h1>
-      <div className="card">
+    <Page>
+      <div className="head"><h1>Workforce</h1>{r.data && <span className="sub">{r.data.length}</span>}</div>
+      <div className="panel">
         <Resource r={r} empty="No agents registered.">
           {(rows) => (
             <table><thead><tr><th>Name</th><th>Role</th><th>Description</th><th>Status</th></tr></thead>
-              <tbody>{rows.map((a) => <tr key={a.id}><td>{a.name}</td><td>{a.role}</td><td className="muted">{a.description}</td><td><Badge value={a.status} /></td></tr>)}</tbody></table>
+              <StaggerBody>{rows.map((x) => (
+                <Row key={x.id}><td>{x.name}</td><td className="mono">{x.role}</td><td className="muted">{x.description}</td><td><Badge value={x.status} /></td></Row>
+              ))}</StaggerBody></table>
           )}
         </Resource>
       </div>
-    </>
+    </Page>
   );
 }

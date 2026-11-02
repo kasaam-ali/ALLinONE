@@ -1,9 +1,11 @@
-// Job: GODMODE Frontend. Purpose: App shell with sidebar nav and auth guard for signed-in Command Center pages.
+// Job: GODMODE Frontend. Purpose: App shell with sidebar nav, animated active pill, fixture badge, page transitions, and auth guard.
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { tokens } from "@/lib/api";
+import { clearFixtureSession, forcedFixtures } from "@/lib/source";
 
 export const NAV: [string, string][] = [
   ["/", "Dashboard"],
@@ -13,28 +15,49 @@ export const NAV: [string, string][] = [
   ["/reports", "Reports"],
 ];
 
+export function FixtureBadge({ on }: { on: boolean }) {
+  return on ? <span className="chip fixture" title="API unreachable or fixtures forced. Data is local fixture data.">Fixture</span>
+    : <span className="chip live">Live</span>;
+}
+
 export default function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [fixture, setFixture] = useState(false);
   useEffect(() => {
-    if (path !== "/login" && !tokens.access()) router.replace("/login");
+    if (path !== "/login" && !tokens.access() && !forcedFixtures()) router.replace("/login");
     else setReady(true);
   }, [path, router]);
+  useEffect(() => {
+    const on = () => setFixture(true);
+    window.addEventListener("gm:fixture", on);
+    return () => window.removeEventListener("gm:fixture", on);
+  }, []);
   if (path === "/login") return <>{children}</>;
   if (!ready) return null;
+  const active = (h: string) => path === h || (h !== "/" && path.startsWith(h));
+  const crumb = NAV.find(([h]) => active(h))?.[1] ?? "";
   return (
     <div className="shell">
       <aside className="side">
-        <div className="brand">GOD<span>MODE</span></div>
-        <nav className="nav">
+        <div className="brand"><span className="mark">G</span>GODMODE</div>
+        <nav className="nav" aria-label="Primary">
           {NAV.map(([h, l]) => (
-            <Link key={h} href={h} className={path === h || (h !== "/" && path.startsWith(h)) ? "active" : ""}>{l}</Link>
+            <Link key={h} href={h} className={active(h) ? "active" : ""} aria-current={active(h) ? "page" : undefined}>
+              {active(h) && <motion.span layoutId="nav-pill" className="pill" transition={{ type: "spring", stiffness: 500, damping: 40 }} />}
+              {l}
+            </Link>
           ))}
-          <a href="#" onClick={(e) => { e.preventDefault(); tokens.clear(); router.push("/login"); }}>Sign out</a>
         </nav>
+        <div className="foot">
+          <button className="ghost sm" onClick={() => { tokens.clear(); clearFixtureSession(); router.push("/login"); }}>Sign out</button>
+        </div>
       </aside>
-      <main className="main">{children}</main>
+      <main className="main">
+        <header className="top"><span className="crumb">Command Center</span><span className="muted">/</span><span>{crumb}</span><span className="spacer" /><FixtureBadge on={fixture} /></header>
+        <AnimatePresence mode="wait"><div key={path}>{children}</div></AnimatePresence>
+      </main>
     </div>
   );
 }

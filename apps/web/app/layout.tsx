@@ -1,4 +1,4 @@
-// Root layout: loads global styles and wraps pages in the app shell.
+// Job: GODMODE Frontend. Purpose: Root layout that loads global styles and wraps pages in the app shell.
 import "./globals.css";
 import Shell from "./Shell";
 

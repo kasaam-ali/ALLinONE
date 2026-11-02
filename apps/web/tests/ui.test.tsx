@@ -21,3 +21,20 @@ describe("ui", () => {
     expect(screen.getByRole("alert").textContent).toMatch(/API unreachable/);
   });
 });
+
+describe("fixtures", () => {
+  it("falls back to fixtures when the API is unreachable and flags it", async () => {
+    const { liveOr } = await import("@/lib/source");
+    const seen = vi.fn(); window.addEventListener("gm:fixture", seen);
+    const v = await liveOr(() => Promise.reject(Object.assign(new Error("x"), { status: 0 })), () => 42);
+    expect(v).toBe(42); expect(seen).toHaveBeenCalled();
+  });
+  it("surfaces auth errors instead of faking data", async () => {
+    const { liveOr } = await import("@/lib/source");
+    await expect(liveOr(() => Promise.reject(Object.assign(new Error("401"), { status: 401 })), () => 1)).rejects.toThrow("401");
+  });
+  it("uses canonical workforce slugs", async () => {
+    const { fx } = await import("@/lib/fixtures");
+    expect(fx.agents.map((a) => a.role)).toEqual(["planner", "researcher", "executor", "verifier", "reporter"]);
+  });
+});

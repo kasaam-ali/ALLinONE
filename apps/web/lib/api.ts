@@ -65,7 +65,7 @@ export const paths = {
   login: "/auth/login", refresh: "/auth/refresh", me: "/auth/me",
   health: "/health", ready: "/ready",
   agents: "/agents", tasks: "/tasks", runs: "/runs", approvals: "/approvals",
-  dashboard: "/dashboard/summary", audit: "/audit", reports: "/reports", memory: "/memory",
+  dashboard: "/dashboard/summary", audit: "/audit", reports: "/reports", memory: "/memory", integrations: "/integrations",
 } as const;
 
 export const api = {
@@ -85,4 +85,5 @@ export const api = {
   audit: (f: { entity_type?: string; entity_id?: string; limit?: number } = {}) => request<AuditEntry[]>(paths.audit + q(f)),
   reports: () => request<Report[]>(paths.reports),
   memory: () => request<unknown[]>(paths.memory),
+  integrations: () => request<unknown[]>(paths.integrations),
 };

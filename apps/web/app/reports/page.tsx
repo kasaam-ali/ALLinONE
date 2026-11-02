@@ -1,26 +1,27 @@
 // Job: GODMODE Frontend. Purpose: Reports list page for GET /reports.
 "use client";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { Badge, fmt } from "@/components/State";
+import { data } from "@/lib/data";
 import { useApi } from "@/lib/useApi";
 import { Resource } from "@/components/Resource";
-import { Badge, fmt } from "@/components/State";
+import { Page, Row, StaggerBody } from "@/components/Motion";
 
 export default function Reports() {
-  const r = useApi(() => api.reports());
+  const r = useApi(() => data.reports());
   return (
-    <>
-      <h1>Reports</h1>
-      <div className="card">
-        <Resource r={r} empty="No reports yet.">
+    <Page>
+      <div className="head"><h1>Reports</h1>{r.data && <span className="sub">{r.data.length}</span>}</div>
+      <div className="panel">
+        <Resource r={r} empty="No reports yet. Reports publish after the before_publish gate.">
           {(rows) => (
             <table><thead><tr><th>Title</th><th>Task</th><th>Status</th><th>Created</th></tr></thead>
-              <tbody>{rows.map((x) => (
-                <tr key={x.id}><td>{x.title || `Report ${x.id}`}</td><td>{x.task_id != null ? <Link href={`/tasks/${x.task_id}`}>{x.task_id}</Link> : "-"}</td><td>{x.status && <Badge value={x.status} />}</td><td className="muted">{fmt(x.created_at)}</td></tr>
-              ))}</tbody></table>
+              <StaggerBody>{rows.map((x) => (
+                <Row key={x.id}><td>{x.title || `Report ${x.id}`}</td><td>{x.task_id != null ? <Link href={`/tasks/${x.task_id}`}>{x.task_id}</Link> : "-"}</td><td>{x.status && <Badge value={x.status} />}</td><td className="muted">{fmt(x.created_at)}</td></Row>
+              ))}</StaggerBody></table>
           )}
         </Resource>
       </div>
-    </>
+    </Page>
   );
 }

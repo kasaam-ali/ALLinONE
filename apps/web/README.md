@@ -17,7 +17,7 @@ npm test         # Vitest unit and smoke tests (fetch is mocked)
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `NEXT_PUBLIC_API_BASE_URL` | `/api/v1` | Base URL used by the browser client. Keep the default to use the proxy. |
-| `API_PROXY_TARGET` | `http://localhost:8000/api/v1` | Where Next.js rewrites forward `/api/v1/*`. Read at build/start time. |
+| `API_PROXY_TARGET` | `http://localhost:8010/api/v1` | Where Next.js rewrites forward `/api/v1/*`. Read at build/start time. |
 
 ## Routes
 

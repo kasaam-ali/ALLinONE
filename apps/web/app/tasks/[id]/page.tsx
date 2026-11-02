@@ -1,78 +1,82 @@
-// Job: GODMODE Frontend. Purpose: Task detail with Run, StageEvent, Artifact, and Approval actions.
+// Job: GODMODE Frontend. Purpose: Task detail with Run, StageEvent timeline, Artifacts, and animated approval gate decisions.
 "use client";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { data } from "@/lib/data";
 import { useApi } from "@/lib/useApi";
 import { Resource } from "@/components/Resource";
 import { Badge, ErrorBox, fmt } from "@/components/State";
-import type { ApprovalDecision } from "@/lib/types";
+import { Page } from "@/components/Motion";
+import type { Approval, ApprovalDecision } from "@/lib/types";
 
 function RunPanel({ runId }: { runId: string | number }) {
-  const run = useApi(() => api.run(runId), [runId]);
-  const events = useApi(() => api.runEvents(runId), [runId]);
-  const artifacts = useApi(() => api.runArtifacts(runId), [runId]);
+  const run = useApi(() => data.run(runId), [runId]);
+  const events = useApi(() => data.runEvents(runId), [runId]);
+  const artifacts = useApi(() => data.runArtifacts(runId), [runId]);
   return (
-    <>
-      <div className="card"><h2>Latest run</h2>
-        <Resource r={run}>{(r) => <p>Run {r.id} <Badge value={r.status} /> {r.stage && <span className="muted">stage: {r.stage}</span>}</p>}</Resource>
-      </div>
-      <div className="card"><h2>Plan and stage events</h2>
+    <div className="split">
+      <div className="panel"><h2>Run <Resource r={run}>{(r) => <><span className="mono">#{r.id}</span> <Badge value={r.status} /> {r.stage && <span className="muted">stage {r.stage}</span>}</>}</Resource></h2>
         <Resource r={events} empty="No stage events yet.">
-          {(rows) => (
-            <table><thead><tr><th>Time</th><th>Stage</th><th>Status</th><th>Message</th></tr></thead>
-              <tbody>{rows.map((e) => <tr key={e.id}><td className="muted">{fmt(e.created_at)}</td><td>{e.stage}</td><td>{e.status && <Badge value={e.status} />}</td><td>{e.message}</td></tr>)}</tbody></table>
-          )}
+          {(rows) => <ul className="timeline">{rows.map((e) => <li key={e.id}><span className="muted">{fmt(e.created_at)}</span><span className="mono">{e.stage}</span><span>{e.message}</span>{e.status && <Badge value={e.status} />}</li>)}</ul>}
         </Resource>
       </div>
-      <div className="card"><h2>Artifacts</h2>
+      <div className="panel"><h2>Artifacts</h2>
         <Resource r={artifacts} empty="No artifacts yet.">
-          {(rows) => <ul>{rows.map((a) => <li key={a.id}>{a.name || a.kind || `Artifact ${a.id}`} <span className="muted">{fmt(a.created_at)}</span></li>)}</ul>}
+          {(rows) => <ul className="timeline">{rows.map((a) => <li key={a.id} style={{ gridTemplateColumns: "1fr auto" }}><span className="mono">{a.name || a.kind || `artifact ${a.id}`}</span><span className="muted">{fmt(a.created_at)}</span></li>)}</ul>}
         </Resource>
       </div>
-    </>
+    </div>
+  );
+}
+
+function Gate({ a, onDecide }: { a: Approval; onDecide: (id: Approval["id"], d: ApprovalDecision) => Promise<void> }) {
+  const [busy, setBusy] = useState<ApprovalDecision | null>(null);
+  const reduce = useReducedMotion();
+  const pending = a.status === "pending";
+  return (
+    <motion.div className="gate" layout={!reduce}
+      animate={reduce ? undefined : a.status === "approved" ? { backgroundColor: ["rgba(63,185,80,0.12)", "rgba(63,185,80,0)"] } : a.status === "rejected" ? { backgroundColor: ["rgba(242,85,90,0.12)", "rgba(242,85,90,0)"], x: [0, -3, 3, 0] } : undefined}
+      transition={{ duration: 0.6 }}>
+      <span className="name">{a.gate}</span>
+      <AnimatePresence mode="wait"><motion.span key={a.status} initial={reduce ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}><Badge value={a.status} /></motion.span></AnimatePresence>
+      <span className="muted">{fmt(a.created_at)}</span>
+      {pending && <div className="actions">
+        <motion.button whileTap={reduce ? undefined : { scale: 0.96 }} disabled={!!busy} onClick={async () => { setBusy("approve"); await onDecide(a.id, "approve"); setBusy(null); }}>{busy === "approve" ? "Approving..." : "Approve"}</motion.button>
+        <motion.button whileTap={reduce ? undefined : { scale: 0.96 }} className="bad" disabled={!!busy} onClick={async () => { setBusy("reject"); await onDecide(a.id, "reject"); setBusy(null); }}>{busy === "reject" ? "Rejecting..." : "Reject"}</motion.button>
+      </div>}
+    </motion.div>
   );
 }
 
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>();
-  const task = useApi(() => api.task(id), [id]);
-  const approvals = useApi(() => api.approvals(), []);
-  const [busy, setBusy] = useState(false);
+  const task = useApi(() => data.task(id), [id]);
+  const approvals = useApi(() => data.approvals(), []);
   const [err, setErr] = useState("");
   async function decide(aid: string | number, d: ApprovalDecision) {
-    setBusy(true); setErr("");
-    try { await api.decide(aid, d); approvals.reload(); task.reload(); }
+    setErr("");
+    try { await data.decide(aid, d); approvals.reload(); task.reload(); }
     catch (e) { setErr((e as Error).message); }
-    finally { setBusy(false); }
   }
   return (
-    <Resource r={task} empty="Task not found.">
-      {(t) => {
-        const mine = (approvals.data || []).filter((a) => String(a.task_id) === String(t.id));
-        return (
-          <>
-            <h1>{t.title || `Task ${t.id}`} <Badge value={t.status} /></h1>
-            {t.prompt && <div className="card"><h2>Objective</h2><p>{t.prompt}</p></div>}
-            {t.latest_run_id != null
-              ? <RunPanel runId={t.latest_run_id} />
-              : <div className="card placeholder"><h2>Run</h2><p>No run started yet. Plan, stage events, and artifacts appear here once a run exists.</p></div>}
-            <div className="card"><h2>Approvals (after_plan, before_publish)</h2>
-              {err && <ErrorBox message={err} />}
-              {approvals.error ? <ErrorBox message={approvals.error} onRetry={approvals.reload} /> : mine.length === 0 ? <p className="muted">No approvals for this task.</p> : (
-                <table><thead><tr><th>Gate</th><th>Status</th><th>Created</th><th /></tr></thead>
-                  <tbody>{mine.map((a) => (
-                    <tr key={a.id}><td>{a.gate}</td><td><Badge value={a.status} /></td><td className="muted">{fmt(a.created_at)}</td>
-                      <td>{a.status === "pending" && <div className="row">
-                        <button disabled={busy} onClick={() => decide(a.id, "approve")}>Approve</button>
-                        <button className="bad" disabled={busy} onClick={() => decide(a.id, "reject")}>Reject</button>
-                      </div>}</td></tr>
-                  ))}</tbody></table>
-              )}
-            </div>
-          </>
-        );
-      }}
-    </Resource>
+    <Page>
+      <Resource r={task} empty="Task not found.">
+        {(t) => {
+          const mine = (approvals.data || []).filter((a) => String(a.task_id) === String(t.id));
+          return (
+            <>
+              <div className="head"><span className="mono">#{t.id}</span><h1>{t.title || `Task ${t.id}`}</h1><Badge value={t.status} /></div>
+              {t.prompt && <div className="panel pad"><h2>Objective</h2><div>{t.prompt}</div></div>}
+              <div className="panel"><h2>Approval gates (after_plan, before_publish)</h2>
+                {err && <ErrorBox message={err} />}
+                {approvals.error ? <ErrorBox message={approvals.error} onRetry={approvals.reload} /> : mine.length === 0 ? <p className="muted" style={{ padding: "0 14px 12px" }}>No gates opened for this task.</p> : mine.map((a) => <Gate key={a.id} a={a} onDecide={decide} />)}
+              </div>
+              {t.latest_run_id != null ? <RunPanel runId={t.latest_run_id} /> : <div className="panel pad muted">No run started. Stage events and artifacts appear once a run exists.</div>}
+            </>
+          );
+        }}
+      </Resource>
+    </Page>
   );
 }
