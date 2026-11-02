@@ -1,5 +1,6 @@
 """Job: GODMODE Backend. Purpose: Idempotent seed for roles users and agent definitions."""
 import os
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from .models import User, AgentDefinition
 from .security import hash_pw
@@ -14,9 +15,13 @@ def seed(db: Session) -> None:
     ]
     for email, name, role, password in defaults:
         email_n = email.lower().strip()
-        if not db.query(User).filter_by(email=email_n).first():
-            db.add(User(email=email_n, display_name=name, role=role, password_hash=hash_pw(password)))
-    db.flush()
+        if db.query(User).filter_by(email=email_n).first():
+            continue
+        db.add(User(email=email_n, display_name=name, role=role, password_hash=hash_pw(password)))
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
 
     agents = [
         ("planner", "Atlas", "Break objectives into plans", ["http_fetch"]),
@@ -25,15 +30,21 @@ def seed(db: Session) -> None:
         ("verifier", "Sentinel", "Verify outputs", ["http_fetch"]),
         ("reporter", "Scribe", "Write reports", []),
     ]
-    if db.query(AgentDefinition).count() == 0:
-        admin = db.query(User).filter_by(role="admin").first()
-        for slug, name, prompt, tools in agents:
-            db.add(AgentDefinition(
-                slug=slug,
-                name=name,
-                role_prompt=prompt,
-                tools_allowlist=tools,
-                status="active",
-                created_by=admin.id if admin else None,
-            ))
+    admin = db.query(User).filter_by(role="admin").first()
+    for slug, name, prompt, tools in agents:
+        if db.query(AgentDefinition).filter_by(slug=slug).first():
+            continue
+        db.add(AgentDefinition(
+            slug=slug,
+            name=name,
+            role_prompt=prompt,
+            tools_allowlist=tools,
+            status="active",
+            created_by=admin.id if admin else None,
+        ))
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            admin = db.query(User).filter_by(role="admin").first()
     db.commit()

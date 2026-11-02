@@ -1,6 +1,5 @@
 """Tests for stub tools, allowlist enforcement, and the inbound webhook stub endpoint."""
 import socket, pytest
-from fastapi.testclient import TestClient
 from app.tools import invoke, ToolNotAllowed, KNOWN_STUB_TOOLS, validate_allowlist
 from app.tools.http_fetch import http_fetch
 from app.tools.browser_stub import browser_stub
@@ -23,9 +22,7 @@ def test_allowlist_enforced():
     with pytest.raises(ValueError): validate_allowlist(["mock"])
     assert set(KNOWN_STUB_TOOLS) == {"http_fetch", "browser_stub", "webhook_inbound"}
 
-def test_webhook_endpoint_and_tools_list(no_network):
-    from app.main import app
-    c = TestClient(app)
+def test_webhook_endpoint_and_tools_list(no_network, c):
     r = c.post("/api/v1/integrations/webhooks/github", json={"event": "push"})
     assert r.status_code == 200 and r.json()["stub"] is True and r.json()["data"]["fanout"] is False
     assert c.post("/api/v1/integrations/webhooks/Bad!Src", json={}).status_code in (404, 422)

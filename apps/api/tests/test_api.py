@@ -1,26 +1,9 @@
 """Purpose: API tests for the canonical /api/v1 contract and the two-gate run flow (mock LLM)."""
-import os
-from pathlib import Path
+# DB env + session client: tests/conftest.py
 
-DB = Path(__file__).resolve().parent.parent / "test_godmode.db"
-os.environ["DATABASE_URL"] = f"sqlite:///{DB}"
-os.environ["GODMODE_MOCK_LLM"] = "1"
-os.environ["JWT_SECRET"] = "test-secret-at-least-32-bytes-long!!"
-os.environ["GODMODE_REQUIRE_JWT_SECRET"] = "0"
-if DB.exists():
-    DB.unlink()
-
-import pytest
-from fastapi.testclient import TestClient
-from app.main import app
+import uuid
 
 V = "/api/v1"
-
-
-@pytest.fixture(scope="module")
-def c():
-    with TestClient(app) as client:
-        yield client
 
 
 def login(c, email="admin@godmode.local"):
@@ -51,7 +34,8 @@ def test_agents(c):
     h = hdr(login(c))
     slugs = {a["slug"] for a in c.get(f"{V}/agents", headers=h).json()}
     assert {"planner", "researcher", "executor", "verifier", "reporter"} <= slugs
-    r = c.post(f"{V}/agents", headers=h, json={"slug": "extra", "name": "Extra", "tools_allowlist": ["http_fetch"]})
+    slug = f"extra-{uuid.uuid4().hex[:8]}"
+    r = c.post(f"{V}/agents", headers=h, json={"slug": slug, "name": "Extra", "tools_allowlist": ["http_fetch"]})
     assert r.status_code == 201, r.text
     aid = r.json()["id"]
     assert c.patch(f"{V}/agents/{aid}", headers=h, json={"name": "Extra2"}).json()["version"] == 2
