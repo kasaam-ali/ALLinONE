@@ -12,9 +12,6 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)](#quick-start)
 [![License](https://img.shields.io/badge/license-private-lightgrey?style=flat-square)](#)
 
-<p align="center">
-  <img src="docs/screenshots/dashboard.png" alt="ALLinONE Command Center dashboard" width="900" />
-</p>
 
 🧠 **ALLinONE** is an autonomous digital workforce command center. Describe a business objective in plain language. A team of AI agents plans, researches, executes, verifies, and reports, with human approval gates and a full audit trail.
 
@@ -31,15 +28,6 @@ This repository is the runnable MVP. Out of the box it uses a mock LLM (`GODMODE
 7. **Audit log**, persistent memory hooks, and report / dashboard summary analytics.
 8. **Integrations stub**: authenticated `GET /api/v1/integrations` returns `[]` (no live outbound yet).
 
-## 📸 Screenshots
-
-| Login | Tasks (Live) |
-|---|---|
-| ![Login](docs/screenshots/login.png) | ![Tasks](docs/screenshots/tasks.png) |
-
-| Workforce | Task detail |
-|---|---|
-| ![Workforce](docs/screenshots/workforce.png) | ![Task detail](docs/screenshots/task-detail.png) |
 
 ## 🏗️ Architecture
 
@@ -157,7 +145,7 @@ packages/
   shared/       Shared TypeScript types
 infra/
   migrations/   SQL schema (001-003)
-docs/           Architecture, ADRs mirror, screenshots
+docs/           Architecture and ADRs mirror
 handoffs/       Status notes (Docker, integrations)
 scripts/        dev-local.sh, smoke-local.sh
 docker-compose.yml
@@ -181,7 +169,3 @@ Board: **GREEN with caveats** (see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STA
 ## 🛡️ Security
 
 No secrets are committed. Copy `.env.example` to `.env`. `apps/web/.env.local` is gitignored. Default JWT and demo passwords are for local use only.
-
-## 📜 License
-
-Private project repository. All rights reserved unless otherwise stated by the owner.
