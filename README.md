@@ -1,4 +1,5 @@
-# GODMODE
+# ALLinONE
+
 
 [![Status](https://img.shields.io/badge/status-MVP%20GREEN-22c55e?style=flat-square)](IMPLEMENTATION_STATUS.md)
 [![API tests](https://img.shields.io/badge/pytest-22%20passed-0ea5e9?style=flat-square)](#tests)
@@ -11,11 +12,15 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)](#quick-start)
 [![License](https://img.shields.io/badge/license-private-lightgrey?style=flat-square)](#)
 
-**Autonomous digital workforce command center.** Describe a business objective in plain language. A team of AI agents plans, researches, executes, verifies, and reports, with human approval gates and a full audit trail.
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="ALLinONE Command Center dashboard" width="900" />
+</p>
+
+🧠 **ALLinONE** is an autonomous digital workforce command center. Describe a business objective in plain language. A team of AI agents plans, researches, executes, verifies, and reports, with human approval gates and a full audit trail.
 
 This repository is the runnable MVP. Out of the box it uses a mock LLM (`GODMODE_MOCK_LLM=1`), so no paid model keys are required for local demo.
 
-## Features
+## ✨ Features
 
 1. **Command Center UI** (Next.js + Motion) with Live / Fixture source chip, dashboard, workforce, tasks, and readable approval gates.
 2. **Natural-language tasks** with create-to-start flow and live DTO-backed task detail.
@@ -26,7 +31,17 @@ This repository is the runnable MVP. Out of the box it uses a mock LLM (`GODMODE
 7. **Audit log**, persistent memory hooks, and report / dashboard summary analytics.
 8. **Integrations stub**: authenticated `GET /api/v1/integrations` returns `[]` (no live outbound yet).
 
-## Architecture
+## 📸 Screenshots
+
+| Login | Tasks (Live) |
+|---|---|
+| ![Login](docs/screenshots/login.png) | ![Tasks](docs/screenshots/tasks.png) |
+
+| Workforce | Task detail |
+|---|---|
+| ![Workforce](docs/screenshots/workforce.png) | ![Task detail](docs/screenshots/task-detail.png) |
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart LR
@@ -51,7 +66,7 @@ flowchart LR
 
 Source of truth for contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Honesty board: [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). Ops notes: [RUNBOOK.md](RUNBOOK.md), [handoffs/DOCKER_STATUS.md](handoffs/DOCKER_STATUS.md).
 
-## Quick start
+## 🚀 Quick start
 
 ### Docker (recommended)
 
@@ -95,7 +110,7 @@ scripts/smoke-local.sh
 
 Reuses an API already on 8010, otherwise starts one. Checks health, ready, login, and dashboard summary.
 
-## Demo login
+## 🔑 Demo login
 
 | Email | Password | Role |
 |---|---|---|
@@ -103,14 +118,14 @@ Reuses an API already on 8010, otherwise starts one. Checks health, ready, login
 
 Override with `GODMODE_ADMIN_EMAIL` / `GODMODE_ADMIN_PASSWORD` (or `SEED_ADMIN_*` alias) before any shared deploy.
 
-## Try the happy path
+## 🎯 Try the happy path
 
 1. Sign in with the demo admin.
 2. Open Tasks, create a task, then Start run.
 3. When a gate appears, Approve or Reject (After plan / Before publish).
 4. Check dashboard summary, audit, and workforce.
 
-## Tests
+## 🧪 Tests
 
 API (from repo root):
 
@@ -132,7 +147,7 @@ npm test -- --run
 
 Expect **13/13**.
 
-## Repository layout
+## 📁 Repository layout
 
 ```
 apps/
@@ -142,14 +157,14 @@ packages/
   shared/       Shared TypeScript types
 infra/
   migrations/   SQL schema (001-003)
-docs/           Architecture and ADRs mirror
+docs/           Architecture, ADRs mirror, screenshots
 handoffs/       Status notes (Docker, integrations)
 scripts/        dev-local.sh, smoke-local.sh
 docker-compose.yml
 docker-compose.box.yml
 ```
 
-## Status and caveats
+## 📊 Status and caveats
 
 Board: **GREEN with caveats** (see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)).
 
@@ -163,10 +178,10 @@ Board: **GREEN with caveats** (see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STA
 | Integrations | Stub list only; no live outbound tools |
 | Production deploy | Not done; requires explicit owner approval |
 
-## Security
+## 🛡️ Security
 
 No secrets are committed. Copy `.env.example` to `.env`. `apps/web/.env.local` is gitignored. Default JWT and demo passwords are for local use only.
 
-## License
+## 📜 License
 
 Private project repository. All rights reserved unless otherwise stated by the owner.
