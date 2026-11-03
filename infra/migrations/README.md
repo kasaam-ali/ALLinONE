@@ -1,6 +1,6 @@
 <!--
-Job: GODMODE Database
-Purpose: Explain how to apply ordered Postgres migrations for GODMODE MVP.
+Job: ALLinONE Database
+Purpose: Explain how to apply ordered Postgres migrations for ALLinONE MVP.
 -->
 
 # migrations

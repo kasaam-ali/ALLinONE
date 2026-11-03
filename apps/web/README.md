@@ -1,6 +1,6 @@
-# GODMODE Command Center (apps/web)
+# ALLinONE Command Center (apps/web)
 
-Next.js 14 App Router + React + TypeScript admin UI for GODMODE. It talks only to the `/api/v1` contract defined in `handoffs/ARCHITECTURE.md`.
+Next.js 14 App Router + React + TypeScript admin UI for ALLinONE. It talks only to the `/api/v1` contract defined in `handoffs/ARCHITECTURE.md`.
 
 ## Run
 

@@ -1,7 +1,7 @@
-# GODMODE Architecture (Architect handoff)
+# ALLinONE Architecture (Architect handoff)
 
 Updated: 2026-11-03 ~00:27 Asia/Karachi (SoT synced to live Backend DTOs)
-Owner: GODMODE Architect → CTO
+Owner: ALLinONE Architect → CTO
 **Status: CTO LOCKED for MVP** (2026-11-03). Cuts: no WS, no AgentInstance multiplicity, Memory w/o embeddings, `GODMODE_MOCK_LLM=1` required.  
 Stack: locked (see `/workspace/godmode/STACK.md`)  
 Repo target: `/workspace/godmode/repo` → `apps/web`, `apps/api`, `packages/shared`, `infra/`

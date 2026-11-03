@@ -1,4 +1,4 @@
-"""Job: GODMODE Agentic AI. Purpose: LangGraph run orchestration with two human gates.
+"""Job: ALLinONE Agentic AI. Purpose: LangGraph run orchestration with two human gates.
 
 Flow: plan -> after_plan gate -> research -> execute -> verify -> before_publish gate -> report.
 Each invocation runs from run.current_stage until it hits a pending gate or finishes.

@@ -1,4 +1,4 @@
-"""Job: GODMODE Integrations. Purpose: STUB inbound webhook + integrations list router. No external fan-out."""
+"""Job: ALLinONE Integrations. Purpose: STUB inbound webhook + integrations list router. No external fan-out."""
 import re
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request

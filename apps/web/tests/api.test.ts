@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Vitest coverage for the API client path contract.
+// Job: ALLinONE Frontend. Purpose: Vitest coverage for the API client path contract.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, paths, tokens } from "@/lib/api";
 

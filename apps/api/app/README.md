@@ -1,6 +1,6 @@
 # app/
 
-FastAPI application package for GODMODE API.
+FastAPI application package for ALLinONE API.
 
 - `orchestrator.py`: LangGraph plan -> research -> execute -> verify -> report (Agentic AI)
 - `main.py`: HTTP routes, approvals, audit (Backend)

@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Activity and audit feed for GET /audit.
+// Job: ALLinONE Frontend. Purpose: Activity and audit feed for GET /audit.
 "use client";
 import { fmt } from "@/components/State";
 import { data } from "@/lib/data";

@@ -1,4 +1,4 @@
-"""Job: GODMODE Backend. Purpose: SQLAlchemy engine and session factory."""
+"""Job: ALLinONE Backend. Purpose: SQLAlchemy engine and session factory."""
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase

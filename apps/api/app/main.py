@@ -26,7 +26,7 @@ async def lifespan(_app):
     yield
 
 
-app = FastAPI(title="GODMODE API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="ALLinONE API", version="0.2.0", lifespan=lifespan)
 _origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3010").split(",")
             if o.strip() and o.strip() != "*"]
 app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_credentials=True,

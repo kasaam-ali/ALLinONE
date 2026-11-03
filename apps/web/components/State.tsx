@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Operational loading, error, empty, and status badge UI helpers.
+// Job: ALLinONE Frontend. Purpose: Operational loading, error, empty, and status badge UI helpers.
 export function Loading() {
   return (
     <div className="skeleton" role="status" aria-label="Loading">

@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Tasks list for GET /tasks plus create form for POST /tasks.
+// Job: ALLinONE Frontend. Purpose: Tasks list for GET /tasks plus create form for POST /tasks.
 "use client";
 import Link from "next/link";
 import { FormEvent, useState } from "react";

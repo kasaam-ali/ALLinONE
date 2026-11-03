@@ -1,4 +1,4 @@
-# GODMODE Stack (CTO lock - 2026-11-03 PKT)
+# ALLinONE Stack (CTO lock - 2026-11-03 PKT)
 
 ## Goal
 Runnable MVP: natural-language business task → AI agents plan/research/execute/verify/report.

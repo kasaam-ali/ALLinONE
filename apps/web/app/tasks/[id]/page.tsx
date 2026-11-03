@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Task detail with Start run, StageEvent timeline, Artifacts, and animated approval gate decisions.
+// Job: ALLinONE Frontend. Purpose: Task detail with Start run, StageEvent timeline, Artifacts, and animated approval gate decisions.
 "use client";
 import { useParams } from "next/navigation";
 import { useState } from "react";

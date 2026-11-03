@@ -22,7 +22,7 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <motion.div className="login panel" initial={reduce ? false : { opacity: 0, y: 8, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
-        <div className="brand"><span className="mark">G</span>GODMODE</div>
+        <div className="brand"><span className="mark">A</span>ALLinONE</div>
         <div><h1>Sign in to Command Center</h1><p className="muted" style={{ margin: "4px 0 0" }}>Autonomous workforce operations</p></div>
         <form onSubmit={submit}>
           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" autoComplete="username" />

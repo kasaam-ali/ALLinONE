@@ -1,4 +1,4 @@
-"""Job: GODMODE Backend. Purpose: Idempotent seed for roles users and agent definitions."""
+"""Job: ALLinONE Backend. Purpose: Idempotent seed for roles users and agent definitions."""
 import os
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session

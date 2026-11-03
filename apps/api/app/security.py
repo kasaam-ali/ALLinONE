@@ -1,4 +1,4 @@
-"""Job: GODMODE Backend. Purpose: JWT auth, password hashing, and role authz helpers."""
+"""Job: ALLinONE Backend. Purpose: JWT auth, password hashing, and role authz helpers."""
 import os
 import datetime as dt
 import bcrypt

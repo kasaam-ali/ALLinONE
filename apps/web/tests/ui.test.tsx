@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Vitest UI smoke tests for login, nav, and error state.
+// Job: ALLinONE Frontend. Purpose: Vitest UI smoke tests for login, nav, and error state.
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/login" }));

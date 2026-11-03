@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Reports list page for GET /reports.
+// Job: ALLinONE Frontend. Purpose: Reports list page for GET /reports.
 "use client";
 import Link from "next/link";
 import { Badge, fmt } from "@/components/State";

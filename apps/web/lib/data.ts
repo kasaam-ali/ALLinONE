@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Page-facing data functions combining the /api/v1 client with fixture fallback.
+// Job: ALLinONE Frontend. Purpose: Page-facing data functions combining the /api/v1 client with fixture fallback.
 import { api } from "./api";
 import { fx } from "./fixtures";
 import { forcedFixtures, liveOr } from "./source";

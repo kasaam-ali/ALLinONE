@@ -1,4 +1,4 @@
--- Job: GODMODE Database
+-- Job: ALLinONE Database
 -- Purpose: Idempotent seed for demo agent_definitions and notes for admin user creation.
 
 -- GODMODE seed: admin demo notes + agent_definitions

@@ -1,4 +1,4 @@
--- Job: GODMODE Database
+-- Job: ALLinONE Database
 -- Purpose: Canonical Postgres DDL for the Architect-locked MVP domain model (G2).
 
 -- GODMODE Postgres schema. Architect LOCKED model (CTO 2026-11-03).

@@ -1,11 +1,11 @@
 <!--
-Job: GODMODE Database
+Job: ALLinONE Database
 Purpose: Redis key design for run locks, approval notify, sessions, and short-lived cache.
 -->
 
-# GODMODE Redis keys (Architect lock: run / approval)
+# ALLinONE Redis keys (Architect lock: run / approval)
 
-Owner: GODMODE Database  
+Owner: ALLinONE Database  
 Updated: 2026-11-03 Asia/Karachi  
 Postgres is the source of truth. Redis holds locks, sessions/jti, notify channels, and an optional queue.
 

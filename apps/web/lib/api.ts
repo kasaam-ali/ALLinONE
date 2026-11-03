@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Typed /api/v1 client, tokens, and contract path helpers.
+// Job: ALLinONE Frontend. Purpose: Typed /api/v1 client, tokens, and contract path helpers.
 import type { Agent, Approval, ApprovalDecision, Artifact, AuditEntry, DashboardSummary, LoginResponse, Report, Run, StageEvent, Task, TaskCreate, User } from "./types";
 
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1").replace(/\/$/, "");

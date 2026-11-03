@@ -1,4 +1,4 @@
-"""Job: GODMODE Backend. Purpose: Architect-aligned SQLAlchemy domain models."""
+"""Job: ALLinONE Backend. Purpose: Architect-aligned SQLAlchemy domain models."""
 from datetime import datetime, timezone
 from sqlalchemy import String, Integer, ForeignKey, Text, DateTime, JSON, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship

@@ -1,6 +1,6 @@
 # app/tools
 
-Purpose: the tool interface and registry for GODMODE agents. Every tool here is a STUB. None of them make real HTTP calls, launch a browser, or deliver webhooks. Live mode needs Kasaam's approval via GODMODE CTO.
+Purpose: the tool interface and registry for ALLinONE agents. Every tool here is a STUB. None of them make real HTTP calls, launch a browser, or deliver webhooks. Live mode needs Kasaam's approval via ALLinONE CTO.
 
 - `base.py`: ToolResult, BaseTool protocol, stub_result helper.
 - `registry.py`: KNOWN_STUB_TOOLS, register, validate_allowlist, invoke (enforces the allowlist).

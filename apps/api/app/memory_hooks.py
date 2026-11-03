@@ -1,4 +1,4 @@
-"""Job: GODMODE Agentic AI. Purpose: Persist and load scoped MemoryItem rows for runs.
+"""Job: ALLinONE Agentic AI. Purpose: Persist and load scoped MemoryItem rows for runs.
 
 MVP memory (ADR-007): text store only, no embeddings. Scopes used here: global + task.
 """

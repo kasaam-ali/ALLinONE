@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Workforce page for GET /agents (AgentDefinition: slug, role_prompt, tools_allowlist).
+// Job: ALLinONE Frontend. Purpose: Workforce page for GET /agents (AgentDefinition: slug, role_prompt, tools_allowlist).
 "use client";
 import { Badge } from "@/components/State";
 import { data } from "@/lib/data";

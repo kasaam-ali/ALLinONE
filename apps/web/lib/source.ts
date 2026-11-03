@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Live-first data loader that falls back to fixtures and flags fixture mode for the shell badge.
+// Job: ALLinONE Frontend. Purpose: Live-first data loader that falls back to fixtures and flags fixture mode for the shell badge.
 "use client";
 const KEY = "gm_fixture_mode";
 export const forcedFixtures = () =>

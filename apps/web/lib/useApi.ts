@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: React hook that loads an API resource with loading and error state.
+// Job: ALLinONE Frontend. Purpose: React hook that loads an API resource with loading and error state.
 "use client";
 import { useCallback, useEffect, useState } from "react";
 

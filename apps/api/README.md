@@ -1,6 +1,6 @@
-# GODMODE API (`apps/api`)
+# ALLinONE API (`apps/api`)
 
-Job: FastAPI backend for GODMODE Autonomous Digital Workforce.
+Job: FastAPI backend for ALLinONE Autonomous Digital Workforce.
 
 ## What this package provides
 

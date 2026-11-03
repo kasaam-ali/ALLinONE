@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Shared Motion primitives (page fade, list stagger, KPI ticker) that respect reduced motion.
+// Job: ALLinONE Frontend. Purpose: Shared Motion primitives (page fade, list stagger, KPI ticker) that respect reduced motion.
 "use client";
 import { animate, motion, useReducedMotion, type Variants } from "motion/react";
 import { useEffect, useRef, type ReactNode } from "react";

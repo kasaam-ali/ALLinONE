@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Frontend TypeScript types aligned to live /api/v1 Backend DTOs.
+// Job: ALLinONE Frontend. Purpose: Frontend TypeScript types aligned to live /api/v1 Backend DTOs.
 export type Role = "viewer" | "operator" | "admin";
 export type Gate = "after_plan" | "before_publish";
 export type ApprovalDecision = "approve" | "reject";

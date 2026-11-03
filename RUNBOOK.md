@@ -1,4 +1,4 @@
-# GODMODE Local Runbook
+# ALLinONE Local Runbook
 
 LOCAL ONLY. Compose binds ports to 127.0.0.1 only. No production, Railway, or Vercel deploy without Kasaam's approval via CTO.
 
@@ -48,7 +48,7 @@ PYTHONPATH=. pytest -q
 
 ## Host ports
 
-Host ports 8000 and 3000 are used by other apps on this box. GODMODE maps API to 127.0.0.1:8010 (container 8000) and web to 127.0.0.1:3010 (container 3000). Postgres 5432 and Redis 6379 bind to 127.0.0.1 only. Inside the compose network the web container reaches the API at http://api:8000.
+Host ports 8000 and 3000 are used by other apps on this box. ALLinONE maps API to 127.0.0.1:8010 (container 8000) and web to 127.0.0.1:3010 (container 3000). Postgres 5432 and Redis 6379 bind to 127.0.0.1 only. Inside the compose network the web container reaches the API at http://api:8000.
 
 ## Docker on the box (2026-11-03)
 Docker works on the box with `dockerd --iptables=false` plus `docker-compose.box.yml` (host networking, same ports 8010/3010). See handoffs/DOCKER_STATUS.md. API smoke: `scripts/smoke-local.sh`.

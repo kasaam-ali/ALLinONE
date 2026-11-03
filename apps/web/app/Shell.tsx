@@ -44,7 +44,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
       <aside className="side">
-        <div className="brand"><span className="mark">G</span>GODMODE</div>
+        <div className="brand"><span className="mark">A</span>ALLinONE</div>
         <nav className="nav" aria-label="Primary">
           {NAV.map(([h, l]) => (
             <Link key={h} href={h} className={active(h) ? "active" : ""} aria-current={active(h) ? "page" : undefined}>

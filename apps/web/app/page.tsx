@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Command Center dashboard with animated KPI strip from GET /dashboard/summary, agents, and pending gates.
+// Job: ALLinONE Frontend. Purpose: Command Center dashboard with animated KPI strip from GET /dashboard/summary, agents, and pending gates.
 "use client";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";

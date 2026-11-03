@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Playwright smoke that checks login and shell render, tries live login, falls back to fixture mode, and saves screenshots.
+// Job: ALLinONE Frontend. Purpose: Playwright smoke that checks login and shell render, tries live login, falls back to fixture mode, and saves screenshots.
 // Usage: node e2e/smoke.mjs [baseUrl] [outDir]  (needs `playwright` resolvable, e.g. NODE_PATH)
 import { chromium } from "playwright";
 const base = process.argv[2] || "http://localhost:3010";

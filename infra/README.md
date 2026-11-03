@@ -1,11 +1,11 @@
 <!--
-Job: GODMODE Database
+Job: ALLinONE Database
 Purpose: Document infra assets (Postgres migrations and Redis key design) for local MVP.
 -->
 
 # infra
 
-Postgres migrations and Redis key documentation for GODMODE.
+Postgres migrations and Redis key documentation for ALLinONE.
 
 ## Contents
 

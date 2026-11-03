@@ -1,4 +1,4 @@
-"""Job: GODMODE Backend. Purpose: Optional Redis job enqueue with safe no-op fallback."""
+"""Job: ALLinONE Backend. Purpose: Optional Redis job enqueue with safe no-op fallback."""
 import os
 import json
 import logging

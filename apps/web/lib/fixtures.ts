@@ -1,4 +1,4 @@
-// Job: GODMODE Frontend. Purpose: Fixture data in live /api/v1 DTO shapes, used only when the API is unreachable or fixtures are forced.
+// Job: ALLinONE Frontend. Purpose: Fixture data in live /api/v1 DTO shapes, used only when the API is unreachable or fixtures are forced.
 import type { Agent, Approval, Artifact, AuditEntry, DashboardSummary, Report, Run, StageEvent, Task } from "./types";
 
 const ago = (m: number) => new Date(Date.now() - m * 60000).toISOString();
