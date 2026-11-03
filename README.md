@@ -1,21 +1,33 @@
+<div align="center">
+
 # ALLinONE
 
-[![Status](https://img.shields.io/badge/status-MVP%20GREEN-22c55e?style=flat-square)](IMPLEMENTATION_STATUS.md)
-[![Stack](https://img.shields.io/badge/Next.js%2014-FastAPI%200.115-0ea5e9?style=flat-square)](#technology-stack)
-[![Orchestration](https://img.shields.io/badge/LangGraph-two%20gates-ff6b6b?style=flat-square)](#how-it-works)
-[![Data](https://img.shields.io/badge/Postgres%2016%20%2B%20Redis%207-336791?style=flat-square)](#technology-stack)
+**Autonomous digital workforce Command Center**
+
+Natural-language tasks · multi-stage agents · human approval gates
+
+[![MVP GREEN](https://img.shields.io/badge/status-MVP%20GREEN-22c55e?style=for-the-badge)](IMPLEMENTATION_STATUS.md)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=nextdotjs&logoColor=white)](#technology-stack)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](#technology-stack)
+[![LangGraph](https://img.shields.io/badge/LangGraph-two%20gates-ff6b6b?style=for-the-badge)](#how-it-works)
+[![Postgres](https://img.shields.io/badge/Postgres-16-336791?style=for-the-badge&logo=postgresql&logoColor=white)](#technology-stack)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white)](#technology-stack)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](#quick-start)
+
+</div>
+
 
 <p align="center">
   <img src="docs/screenshots/dashboard.png" alt="ALLinONE Command Center dashboard (Live)" width="920" />
 </p>
 
-**ALLinONE** is a Command Center for an autonomous digital workforce. You describe a business objective in plain language. The platform creates a task, runs a multi-stage agent workflow (plan → research → execute → verify → report), pauses for human approval at hard gates, and keeps an audit trail.
+**ALLinONE** is a Command Center for an autonomous digital workforce. 🧠 You describe a business objective in plain language. The platform creates a task, runs a multi-stage agent workflow (plan → research → execute → verify → report), pauses for human approval at hard gates, and keeps an audit trail.
 
 This repository is a **runnable local MVP**. Stage text is produced by a **deterministic template path** (see [ADR-001](docs/adr/001.md)). Outbound tools and integrations are **stubs**. That is intentional for a credential-safe demo: you can exercise the product loop without paid model keys or live browser automation.
 
 > Product UI branding is **ALLinONE**. Many environment variables, Compose service names, and seed emails still use the historical `GODMODE_*` / `godmode` prefix. That is intentional compatibility, not a second product name.
 
-## Contents
+## 📚 Contents
 
 - [What you get](#what-you-get)
 - [Screenshots](#screenshots)
@@ -37,7 +49,7 @@ This repository is a **runnable local MVP**. Stage text is produced by a **deter
 - [Contributing](#contributing)
 - [License](#license)
 
-## What you get
+## ✨ What you get
 
 | Capability | MVP reality |
 | --- | --- |
@@ -52,7 +64,7 @@ This repository is a **runnable local MVP**. Stage text is produced by a **deter
 | Reports / analytics | Dashboard summary counts; report list/get/publish |
 | Integrations | Authenticated `GET /integrations` returns `[]`; tool and webhook helpers are stubs |
 
-## Screenshots
+## 📸 Screenshots
 
 Genuine captures from the local Live stack (ALLinONE branding, Live chip). Prefer a wide desktop browser for tables; on mobile GitHub, wide tables scroll horizontally and Mermaid diagrams may need a tap to expand.
 
@@ -70,7 +82,7 @@ Genuine captures from the local Live stack (ALLinONE branding, Live chip). Prefe
 
 `approval-gate.png` is the Command Center dashboard while an `after_plan` gate is pending (KPI + Pending approval gates table). Task-detail Approve/Reject buttons are not shown in Live yet because `GET /approvals` does not include `task_id` while the UI filters gates by `task_id` (tracked under Known limitations).
 
-## How it works
+## 🔄 How it works
 
 ```mermaid
 flowchart TD
@@ -98,7 +110,7 @@ flowchart TD
 
 Research/execute call **stub tools** (`http_fetch`, `browser_stub`) that return deterministic fake payloads and never open a real browser or network fetch for business data ([ADR-008](docs/adr/008.md)).
 
-## Human-in-the-loop
+## 👤 Human-in-the-loop
 
 Two hard gates are product invariants ([ADR-003](docs/adr/003.md)):
 
@@ -117,7 +129,7 @@ Role permissions (simplified):
 | operator | yes | yes | yes | |
 | admin | yes | yes | yes | yes (e.g. disable agent) |
 
-## System architecture
+## 🏗️ System architecture
 
 ```mermaid
 flowchart LR
@@ -140,7 +152,7 @@ flowchart LR
 
 Deeper contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Ops notes: [RUNBOOK.md](RUNBOOK.md).
 
-## Technology stack
+## 🧰 Technology stack
 
 | Layer | Choice |
 | --- | --- |
@@ -151,7 +163,7 @@ Deeper contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Ops notes: [RUNB
 | Auth | JWT access + refresh; DB role is source of truth on refresh ([ADR-004](docs/adr/004.md)) |
 | Runtime | Docker Compose; optional host-network override for iptables-less hosts |
 
-## Quick start
+## 🚀 Quick start
 
 ### Docker (recommended)
 
@@ -204,7 +216,7 @@ scripts/smoke-local.sh
 
 Reuses an API already listening on `:8010`, otherwise starts one. Checks health, ready, login, and dashboard summary. Against Compose, set `SMOKE_PASSWORD` to match your admin password in `.env`.
 
-## Environment
+## ⚙️ Environment
 
 Copy [.env.example](.env.example). Important variables:
 
@@ -221,7 +233,7 @@ Copy [.env.example](.env.example). Important variables:
 | `NEXT_PUBLIC_API_URL` | Browser-visible API origin when not using the rewrite |
 | `API_PROXY_TARGET` | Next.js rewrite destination for `/api/v1/*` (set at **build** time) |
 
-## Demo credentials
+## 🔑 Demo credentials
 
 > **LOCAL DEVELOPMENT ONLY.** Default emails and passwords below are intentionally weak. Never use them on a shared, staged, or production host. Do not commit a real `.env`. Rotate credentials before anyone else can reach the ports.
 
@@ -248,14 +260,14 @@ Always seeded for local demos (hardcoded in apps/api/app/seed.py):
 | operator@godmode.local | godmode123 | operator |
 | viewer@godmode.local | godmode123 | viewer |
 
-## Example walkthrough
+## 🎯 Example walkthrough
 
 1. Sign in as admin (password from the table above for your boot path).
 2. Open **Tasks**, create a task, then **Start** the run.
 3. When the UI shows a pending gate, **Approve** or **Reject**.
 4. Inspect artifacts/events on the task detail page; check **Dashboard**, **Activity**, and **Reports**.
 
-## API surface
+## 📡 API surface
 
 Base path: `/api/v1` (OpenAPI at `/docs`). Selected routes:
 
@@ -275,7 +287,7 @@ Base path: `/api/v1` (OpenAPI at `/docs`). Selected routes:
 
 There is **no** user-management API in this MVP.
 
-## Tests
+## 🧪 Tests
 
 Verified on 2026-11-03 ~22:59 Asia/Karachi (this revision):
 
@@ -302,7 +314,7 @@ npm test
 
 An optional browser smoke script lives at `apps/web/e2e/smoke.mjs` (not wired into `npm test`).
 
-## Repository layout
+## 📁 Repository layout
 
 ```text
 .
@@ -324,7 +336,7 @@ An optional browser smoke script lives at `apps/web/e2e/smoke.mjs` (not wired in
 `-- STACK.md                 Locked stack note
 ```
 
-## Implementation status
+## 📊 Implementation status
 
 Board: **GREEN with caveats** - see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
@@ -336,7 +348,7 @@ Board: **GREEN with caveats** - see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_ST
 | Stock bridge Compose | Unverified without iptables |
 | Production deploy | Not done; requires explicit owner approval |
 
-## Known limitations
+## ⚠️ Known limitations
 
 - No real LLM provider integration; stage output is template text.
 - Tools and integrations do not perform live outbound I/O; browser automation does not start.
@@ -349,7 +361,7 @@ Board: **GREEN with caveats** - see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_ST
 - Historical `GODMODE_*` names remain in env and seed emails.
 - Live task-detail Approve/Reject panel stays empty: `approval_out` omits `task_id` (approvals are keyed by `run_id` only) while the UI filters with `a.task_id === task.id`. Dashboard still lists pending gates.
 
-## Roadmap
+## 🗺️ Roadmap
 
 Candidates (not commitments; production needs owner approval):
 
@@ -362,7 +374,7 @@ Candidates (not commitments; production needs owner approval):
 7. OpenAPI → TypeScript codegen ([ADR-005](docs/adr/005.md)).
 8. Production deploy after explicit go-ahead.
 
-## Architecture decisions
+## 🧭 Architecture decisions
 
 | ADR | Title |
 | --- | --- |
@@ -375,7 +387,7 @@ Candidates (not commitments; production needs owner approval):
 | [007](docs/adr/007.md) | Memory without embeddings |
 | [008](docs/adr/008.md) | Browser tools only with existing credentials |
 
-## Contributing
+## 🤝 Contributing
 
 This is a private MVP repo. Prefer small, tested changes:
 
@@ -385,7 +397,7 @@ This is a private MVP repo. Prefer small, tested changes:
 4. Do not production-deploy without owner approval.
 
 
-## GitHub repository About
+## 🏷️ GitHub repository About
 
 Suggested sidebar metadata (apply in the GitHub repo Settings / About panel if API write access is unavailable):
 
@@ -395,6 +407,6 @@ Suggested sidebar metadata (apply in the GitHub repo Settings / About panel if A
 | Homepage | (leave empty until a public deploy exists) |
 | Topics | allinone, command-center, multi-agent, langgraph, fastapi, nextjs, human-in-the-loop, jwt, docker-compose, mvp |
 
-## License
+## 📄 License
 
 Private / all rights reserved unless a separate license file is added to this repository. Not an open-source grant.
