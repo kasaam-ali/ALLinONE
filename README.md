@@ -54,19 +54,21 @@ This repository is a **runnable local MVP**. Stage text is produced by a **deter
 
 ## Screenshots
 
-Captured from the live local stack (ALLinONE branding, Live chip).
+Genuine captures from the local Live stack (ALLinONE branding, Live chip). Prefer a wide desktop browser for tables; on mobile GitHub, wide tables scroll horizontally and Mermaid diagrams may need a tap to expand.
 
-| Login | Dashboard |
+| Dashboard | Workforce |
 | --- | --- |
-| ![Login](docs/screenshots/login.png) | ![Dashboard](docs/screenshots/dashboard.png) |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Workforce](docs/screenshots/workforce.png) |
 
-| Tasks | Workforce |
+| Tasks | Pending approval gates |
 | --- | --- |
-| ![Tasks](docs/screenshots/tasks.png) | ![Workforce](docs/screenshots/workforce.png) |
+| ![Tasks](docs/screenshots/tasks.png) | ![Pending approval gates](docs/screenshots/approval-gate.png) |
 
-| Task detail | Live tasks (alternate) |
+| Login | Task detail (run awaiting approval) |
 | --- | --- |
-| ![Task detail](docs/screenshots/task-detail.png) | ![Live tasks](docs/screenshots/live-tasks.png) |
+| ![Login](docs/screenshots/login.png) | ![Task detail](docs/screenshots/task-detail.png) |
+
+`approval-gate.png` is the Command Center dashboard while an `after_plan` gate is pending (KPI + Pending approval gates table). Task-detail Approve/Reject buttons are not shown in Live yet because `GET /approvals` does not include `task_id` while the UI filters gates by `task_id` (tracked under Known limitations).
 
 ## How it works
 
@@ -126,14 +128,14 @@ flowchart LR
   Orch --> Mem["Text memory"]
   Orch --> Tools["Stub tools"]
   API --> PG["Postgres 16"]
-  API -.-> Redis["Redis 7 provisioned unused at runtime"]
+  API -.-> Redis["Redis 7: compose + queue helper unused"]
 ```
 
 | Concern | Implementation note |
 | --- | --- |
 | UI → API | Browser calls `/api/v1/*`. Next.js rewrites to `API_PROXY_TARGET` (build-time). Direct `NEXT_PUBLIC_API_URL` is also supported. |
 | Persistence | Postgres in Compose; SQLite for `dev-local` / pytest smoke. Schema via SQLAlchemy `create_all` on startup. SQL under `infra/migrations/` is reference only. |
-| Redis | Started in Compose for future locks/queues ([ADR-002](docs/adr/002.md)). **Not used by runtime request paths today.** |
+| Redis | Compose runs Redis 7. `apps/api/app/queue.py` defines `enqueue` / `ping_redis` (RPUSH `gm:queue:tasks`) with a no-op fallback when `REDIS_URL` is missing, but **no request path imports it yet**. Planned keys are documented in [infra/redis.md](infra/redis.md) ([ADR-002](docs/adr/002.md)). Runs still execute inline in the HTTP request. |
 | Fixture mode | If the API is unreachable or returns 5xx, the UI can fall back to local fixture data and show a Fixture chip. Prefer Live for demos when the API is healthy. |
 
 Deeper contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Ops notes: [RUNBOOK.md](RUNBOOK.md).
@@ -145,7 +147,7 @@ Deeper contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Ops notes: [RUNB
 | Web | Next.js 14.2 (App Router), React 18.3, TypeScript, Motion 11 |
 | API | FastAPI 0.115, SQLAlchemy 2, Pydantic, PyJWT, bcrypt |
 | Orchestration | LangGraph multi-stage graph with two approval gates |
-| Data | PostgreSQL 16 + Redis 7 (Compose); SQLite for local smoke/tests |
+| Data | PostgreSQL 16 (Compose SoT); Redis 7 provisioned for future locks/queue; SQLite for local smoke/tests |
 | Auth | JWT access + refresh; DB role is source of truth on refresh ([ADR-004](docs/adr/004.md)) |
 | Runtime | Docker Compose; optional host-network override for iptables-less hosts |
 
@@ -221,23 +223,30 @@ Copy [.env.example](.env.example). Important variables:
 
 ## Demo credentials
 
-**Security:** these accounts are for local demo only. Change passwords before any shared or networked deploy. Do not commit real secrets.
+> **LOCAL DEVELOPMENT ONLY.** Default emails and passwords below are intentionally weak. Never use them on a shared, staged, or production host. Do not commit a real `.env`. Rotate credentials before anyone else can reach the ports.
+
+### Replace defaults before any shared deploy
+
+1. Copy `.env.example` to `.env` (never commit `.env`).
+2. Set strong values for `GODMODE_ADMIN_EMAIL` and `GODMODE_ADMIN_PASSWORD` (or the `SEED_ADMIN_*` aliases). Prefer `openssl rand -hex 16` (or better) for the password.
+3. Set `JWT_SECRET` to at least 32 random characters (`openssl rand -hex 32`).
+4. Set a strong `POSTGRES_PASSWORD`.
+5. Recreate the database volume **or** delete/recreate users if an old admin row already exists: the seed **creates the admin only when missing**, so changing env alone does not rotate an existing password.
+6. Operator and viewer passwords are hardcoded in `apps/api/app/seed.py` for local demos. Change that seed (or disable those users) before any shared deploy.
 
 Admin password depends on how you boot:
 
 | Boot path | Admin email | Admin password source |
 | --- | --- | --- |
-| Compose using `.env.example` defaults | `admin@godmode.local` | `change-me-admin-password` (`GODMODE_ADMIN_*` / `SEED_ADMIN_*`) |
-| `dev-local.sh` / seed defaults (no env override) | `admin@godmode.local` | `godmode123` |
+| Compose using `.env.example` defaults | admin@godmode.local | change-me-admin-password (GODMODE_ADMIN_* / SEED_ADMIN_*) |
+| scripts/dev-local.sh / seed defaults (no env override) | admin@godmode.local | godmode123 |
 
-Always seeded (hardcoded in `apps/api/app/seed.py`):
+Always seeded for local demos (hardcoded in apps/api/app/seed.py):
 
 | Email | Password | Role |
 | --- | --- | --- |
-| `operator@godmode.local` | `godmode123` | operator |
-| `viewer@godmode.local` | `godmode123` | viewer |
-
-The admin user is created only when missing. Changing env on an existing Postgres volume does not rotate the stored password.
+| operator@godmode.local | godmode123 | operator |
+| viewer@godmode.local | godmode123 | viewer |
 
 ## Example walkthrough
 
@@ -268,7 +277,12 @@ There is **no** user-management API in this MVP.
 
 ## Tests
 
-Verified at documentation rewrite time: **pytest 22 passed**, **vitest 13/13**.
+Verified on 2026-11-03 ~22:59 Asia/Karachi (this revision):
+
+| Suite | Command | Result |
+| --- | --- | --- |
+| API | `cd apps/api && GODMODE_MOCK_LLM=1 pytest -q` | **22 passed**, 1 Starlette/anyio deprecation warning |
+| Web | `cd apps/web && npm test` | **13 passed** (2 files) |
 
 API:
 
@@ -290,16 +304,24 @@ An optional browser smoke script lives at `apps/web/e2e/smoke.mjs` (not wired in
 
 ## Repository layout
 
-```
-apps/api/           FastAPI, orchestrator, tools stubs, pytest
-apps/web/           Next.js Command Center, vitest
-packages/shared/    Shared TypeScript types (hand-maintained)
-infra/migrations/   SQL reference migrations (not auto-applied)
-docs/               Architecture, ADRs, screenshots
-handoffs/           Ops notes (Docker status, etc.)
-scripts/            dev-local.sh, smoke-local.sh
-docker-compose.yml
-docker-compose.box.yml
+```text
+.
+|-- apps/
+|   |-- api/                 FastAPI, LangGraph orchestrator, tool stubs, pytest
+|   `-- web/                 Next.js Command Center, vitest
+|-- packages/
+|   `-- shared/              Shared TypeScript types (hand-maintained)
+|-- infra/
+|   |-- migrations/          SQL reference migrations (not auto-applied)
+|   `-- redis.md             Planned Redis key design
+|-- docs/                    Architecture, ADRs, screenshots
+|-- handoffs/                Ops notes (Docker status, etc.)
+|-- scripts/                 dev-local.sh, smoke-local.sh
+|-- docker-compose.yml       Default Compose stack
+|-- docker-compose.box.yml   Host-network override (iptables-less hosts)
+|-- IMPLEMENTATION_STATUS.md Honesty board
+|-- RUNBOOK.md               Ops commands
+`-- STACK.md                 Locked stack note
 ```
 
 ## Implementation status
@@ -318,13 +340,14 @@ Board: **GREEN with caveats** - see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_ST
 
 - No real LLM provider integration; stage output is template text.
 - Tools and integrations do not perform live outbound I/O; browser automation does not start.
-- Redis is provisioned but unused; there is no background worker. Runs block the HTTP request.
+- Redis runs in Compose and a queue helper exists (`apps/api/app/queue.py`), but nothing calls it yet; there is no background worker. Runs block the HTTP request.
 - No WebSockets; the UI does not stream stage events in real time.
 - No user admin API; operator/viewer passwords are hardcoded in seed.
 - Schema uses `create_all`; migration SQL is documentation unless applied manually.
 - `/ready` does not deeply probe Postgres connectivity (status fields are best-effort).
 - Compose publishes to `127.0.0.1` only in the default file.
 - Historical `GODMODE_*` names remain in env and seed emails.
+- Live task-detail Approve/Reject panel stays empty: `approval_out` omits `task_id` (approvals are keyed by `run_id` only) while the UI filters with `a.task_id === task.id`. Dashboard still lists pending gates.
 
 ## Roadmap
 
@@ -360,6 +383,17 @@ This is a private MVP repo. Prefer small, tested changes:
 2. Run pytest and vitest before opening a review.
 3. Do not commit `.env`, secrets, or local `*.db` files.
 4. Do not production-deploy without owner approval.
+
+
+## GitHub repository About
+
+Suggested sidebar metadata (apply in the GitHub repo Settings / About panel if API write access is unavailable):
+
+| Field | Suggested value |
+| --- | --- |
+| Description | Command Center MVP: NL tasks, LangGraph plan/research/execute/verify/report, two human approval gates, JWT roles. Local demo with mock stage templates. |
+| Homepage | (leave empty until a public deploy exists) |
+| Topics | allinone, command-center, multi-agent, langgraph, fastapi, nextjs, human-in-the-loop, jwt, docker-compose, mvp |
 
 ## License
 
