@@ -27,5 +27,6 @@ services:
     ports: !reset []
     environment:
       API_INTERNAL_URL: http://127.0.0.1:8010
+      API_PROXY_TARGET: http://127.0.0.1:8010/api/v1
       PORT: "3010"
       HOSTNAME: 127.0.0.1

@@ -66,6 +66,7 @@ services:
       context: ./apps/web
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8010}
+        API_PROXY_TARGET: ${API_PROXY_TARGET:-http://127.0.0.1:8010/api/v1}
     restart: unless-stopped
     environment:
       API_INTERNAL_URL: http://api:8000

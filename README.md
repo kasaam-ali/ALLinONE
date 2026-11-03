@@ -13,6 +13,11 @@
 [![License](https://img.shields.io/badge/license-private-lightgrey?style=flat-square)](#)
 
 
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="ALLinONE Command Center dashboard" width="900" />
+</p>
+
+
 🧠 **ALLinONE** is an autonomous digital workforce command center. Describe a business objective in plain language. A team of AI agents plans, researches, executes, verifies, and reports, with human approval gates and a full audit trail.
 
 This repository is the runnable MVP. Out of the box it uses a mock LLM (`GODMODE_MOCK_LLM=1`), so no paid model keys are required for local demo.
@@ -28,6 +33,17 @@ This repository is the runnable MVP. Out of the box it uses a mock LLM (`GODMODE
 7. **Audit log**, persistent memory hooks, and report / dashboard summary analytics.
 8. **Integrations stub**: authenticated `GET /api/v1/integrations` returns `[]` (no live outbound yet).
 
+
+
+## 📸 Screenshots
+
+| Login | Tasks |
+| --- | --- |
+| ![Login](docs/screenshots/login.png) | ![Tasks](docs/screenshots/tasks.png) |
+
+| Workforce | Task detail |
+| --- | --- |
+| ![Workforce](docs/screenshots/workforce.png) | ![Task detail](docs/screenshots/task-detail.png) |
 
 ## 🏗️ Architecture
 
